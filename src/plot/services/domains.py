@@ -153,6 +153,7 @@ def _drop_nameserver(ctx: ServiceContext, domain_name: str, host: Host) -> None:
     assert other is not None
     before = domain_view(ctx, other)
     other.nameservers = [link for link in other.nameservers if link.host_id != host.id]
+    ctx.session.flush()
     for position, link in enumerate(other.nameservers):
         link.position = position
     ctx.session.flush()

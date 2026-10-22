@@ -11,7 +11,6 @@ from sqlalchemy import (
     Integer,
     String,
     TypeDecorator,
-    UniqueConstraint,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -116,7 +115,6 @@ class HostAddr(Base):
 
 class DomainNs(Base):
     __tablename__ = "domain_ns"
-    __table_args__ = (UniqueConstraint("domain_id", "position", name="uq_domain_ns_position"),)
 
     domain_id: Mapped[int] = mapped_column(
         ForeignKey("domains.id", ondelete="CASCADE"), primary_key=True

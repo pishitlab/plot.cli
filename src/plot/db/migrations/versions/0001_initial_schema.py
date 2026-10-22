@@ -110,7 +110,6 @@ def upgrade() -> None:
             ["hosts.id"],
         ),
         sa.PrimaryKeyConstraint("domain_id", "host_id"),
-        sa.UniqueConstraint("domain_id", "position", name="uq_domain_ns_position"),
     )
     op.create_table(
         "host_addrs",
