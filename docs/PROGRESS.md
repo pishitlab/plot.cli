@@ -45,7 +45,7 @@ autonomy: stepwise
 - [x] P1-T04 `core/clock.py` (`Clock`, `SystemClock`, `FakeClock`) และ `core/settings.py` — หลักฐาน: `src/plot/core/clock.py` (`Clock` Protocol, `SystemClock`, `FakeClock` บังคับ UTC/ห้ามถอยหลัง, `add_years` ตามปฏิทิน) + `src/plot/core/settings.py` (`EnvConfig` จาก env/.env, `RuntimeSettings` + `config/settings.default.yml` ตาม §13.4); tests `test_clock.py`, `test_settings.py`; Assumption A-005; `make lint` ผ่าน; `make test` → 76 passed
 - [x] P1-T05 `db/models.py`, `db/session.py`, migration แรกตาม §5 — หลักฐาน: `src/plot/db/models.py` (9 ตารางตาม §5, เวลาเก็บเป็นข้อความ UTC ISO-8601 ความยาวคงที่ผ่าน `UtcDateTime`, CHECK ของ status/kind/family, FK cascade), `src/plot/db/session.py` (`make_engine` เปิด `PRAGMA foreign_keys`, `migrate` ผ่าน Alembic), migration `0001_initial_schema`; `tests/unit/test_db.py` ตรวจ migration == models (`compare_metadata` = []), downgrade, idempotent บนไฟล์จริง, timestamp roundtrip, FK cascade; `make lint` ผ่าน; `make test` → 82 passed
 - [x] P1-T06 `services/ports.py` (Protocol: `DnsPublisher`, `ResolverControl`) + fakes ใน `tests/fakes.py` — หลักฐาน: `src/plot/services/ports.py` (`DnsPublisher`, `ResolverControl`, re-export `Clock`) + `tests/fakes.py` (`FakeDnsPublisher`, `FakeResolverControl`; `FakeClock` อยู่ใน `core/clock.py`); `tests/unit/test_ports.py` ตรวจว่า fake เข้ากับ Protocol (mypy) และบันทึกการเรียก; Assumption A-006; `make lint` ผ่าน; `make test` → 85 passed
-- [ ] P1-T07 `services/events.py` (audit log) + tests R-DOM-07
+- [x] P1-T07 `services/events.py` (audit log) + tests R-DOM-07 — หลักฐาน: `src/plot/services/events.py` (`RequestContext`, `record_event`, `domain_history` รวม event ของ host ย่อย) + `src/plot/services/context.py`; `tests/conftest.py` (SQLite in-memory, `FakeClock`, `FakeDnsPublisher`); test `test_R_DOM_07_record_writes_event_with_request_context` (การเขียน event ของทุก mutation ตรวจต่อใน test ของ T08–T11); Assumption A-007; `make lint` ผ่าน; `make test` → 87 passed
 - [ ] P1-T08 `services/hosts.py` + tests R-HOST-01..07
 - [ ] P1-T09 `services/domains.py` (check/register/renew/delete/status) + tests R-DOM-01..05
 - [ ] P1-T10 `services/nameservers.py` + tests R-NS-01..06
@@ -159,6 +159,7 @@ autonomy: stepwise
 | A-004 | `min_ns` ใน `tlds.yml` ที่ไม่ระบุ = 2; ค่าที่ยอมรับ 1..13 (ขอบบนตาม R-NS-01) ไฟล์ config ผิดรูปแบบ → error ตอนโหลด (registrar ไม่ start) | §2.6 | — |
 | A-005 | `EnvConfig`: `API_KEY`/`PDNS_API_KEY` ไม่มีค่าเริ่มต้น (ต้องตั้งเสมอ ไม่ใช้ `change-me` เงียบ ๆ); `BIND_ADDR` ที่ไม่ตั้ง = `127.0.0.1` (ปลอดภัยตาม N10) ค่าอื่นตาม §13.1; `RuntimeSettings` เป็น strict (ไม่แปลง `"300"` → 300) | §2.6 | — |
 | A-006 | รูปแบบ port: `DnsPublisher.domains_changed(session, domain_names)` — services แจ้งชื่อโดเมนที่ delegation/glue อาจเปลี่ยน ภายใน transaction เดียวกัน; implementation (P3) คำนวณ snapshot ทันทีจาก session นั้น (R-PUB-01) และ schedule เอง; `ResolverControl.flush(domain_name \| None)` (`None` = ทั้งหมด) | §2.6 (SPEC ไม่กำหนด signature) | P3-T04 |
+| A-007 | เพิ่ม `services/context.py` (`ServiceContext`: session, clock, publisher, policy, settings, request) ซึ่งไม่อยู่ในผัง §4.6 — ถือว่าผังเป็นรายการขั้นต่ำ ไม่ใช่รายการปิด; services `flush` แต่ไม่ `commit` (ผู้เรียก เช่น API เป็นเจ้าของ transaction และ rollback เมื่อ error) | §2.6 | — |
 
 ## Unverified (ต้องเคลียร์ก่อนจบ P8)
 | ID | เรื่อง | ทำไมยังไม่ตรวจ | วิธีตรวจ |
