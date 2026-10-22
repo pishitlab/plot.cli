@@ -10,7 +10,7 @@ autonomy: stepwise
 | Phase | ชื่อ | น้ำหนัก | สะสม | สถานะ |
 |---|---|---|---|---|
 | P0 | วางรากฐาน | 5% | 5% | ✅ เสร็จ |
-| P1 | แกนโดเมน | 15% | 20% | ⬜ |
+| P1 | แกนโดเมน | 15% | 20% | 🟦 กำลังทำ |
 | P2 | Registrar API | 15% | 35% | ⬜ |
 | P3 | DNS จริง | 20% | 55% | ⬜ |
 | P4 | CLI | 10% | 65% | ⬜ |
@@ -39,7 +39,7 @@ autonomy: stepwise
   - [x] Q-001..Q-006 ได้คำตอบ และ D-001..D-012 = CONFIRMED ใน SPEC v0.2 (โดยการมอบอำนาจของผู้ใช้)
 
 ## P1 — แกนโดเมน (SPEC §4.4, §5, §6)
-- [ ] P1-T01 `core/errors.py`: error codes ทั้งหมดตาม §8.1 เป็น exception hierarchy
+- [x] P1-T01 `core/errors.py`: error codes ทั้งหมดตาม §8.1 เป็น exception hierarchy — หลักฐาน: `src/plot/core/errors.py` (22 codes §8.1, base `PlotError` + กลุ่ม 400/404/409); `tests/unit/test_errors.py` ตรวจว่าทุก code ใน §8.1 มี class เดียวและ status ตรง; `make lint` ผ่าน; `make test` → 4 passed
 - [ ] P1-T02 `core/names.py` + tests R-NAME-01..03
 - [ ] P1-T03 `core/tlds.py` + loader `config/tlds.yml` + passthrough loader + tests R-NAME-04..05
 - [ ] P1-T04 `core/clock.py` (`Clock`, `SystemClock`, `FakeClock`) และ `core/settings.py`
