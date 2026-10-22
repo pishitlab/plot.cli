@@ -31,7 +31,7 @@ autonomy: stepwise
 - [x] P0-T01 โครงโปรเจกต์: `pyproject.toml`, `Makefile` (install/lint/test/fmt), ruff, mypy, pytest, `.gitignore`, `.env.example`, โครง `src/plot`, `tests/` — หลักฐาน: `make install` → exit 0 (venv `.venv`, Python 3.12.3); `make lint` → ruff `All checks passed!`, `4 files already formatted`, mypy (strict) `Success: no issues found in 4 source files`; `make test` → `1 passed in 0.02s`
 - [x] P0-T02 ตรวจสภาพแวดล้อม: เวอร์ชัน Python, มี Docker/compose หรือไม่ (`docker version`), มี `dig` หรือไม่ → บันทึกผลในหัวข้อ "Environment" ด้านล่าง — หลักฐาน: ดูหัวข้อ Environment (ตรวจ 2026-10-22)
 - [ ] P0-T03 CI: GitHub Actions รัน lint + unit บน push
-- [ ] P0-T04 `README.md` สั้น (วัตถุประสงค์, ลิงก์ SPEC, วิธีรัน lint/test)
+- [x] P0-T04 `README.md` สั้น (วัตถุประสงค์, ลิงก์ SPEC, วิธีรัน lint/test) — หลักฐาน: `README.md` มีวัตถุประสงค์, คำเตือน dev LAN only (§15), ลิงก์ SPEC/PROGRESS, คำสั่ง `make install/lint/test/fmt`; `make lint` + `make test` → ผ่าน (1 passed)
 - [ ] P0-T05 ถามผู้ใช้ Q-001..Q-006 (SPEC §3.1) พร้อมคำแนะนำ แล้วรอคำตอบ
 - **Exit Gate P0:** [ ] ผ่านครบตาม SPEC §16 P0 · [ ] ผู้ใช้อนุมัติ
 
