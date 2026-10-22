@@ -107,6 +107,11 @@ def host_view(session: Session, host: Host) -> HostView:
     )
 
 
+def glue_owners(hosts: Iterable[Host]) -> set[str]:
+    """Domains whose published glue depends on whether ``hosts`` are used as NS (R-PUB-03)."""
+    return {h.parent_domain.name for h in hosts if h.parent_domain is not None}
+
+
 def delete_unused_external_hosts(ctx: ServiceContext, hosts: Iterable[Host]) -> None:
     """R-NS-06: external hosts that no domain uses any more are removed automatically."""
     for host in hosts:
@@ -133,7 +138,7 @@ class HostService:
     def get(self, raw_name: str) -> HostView:
         return host_view(self.session, self._load(raw_name))
 
-    def list(self) -> list[HostView]:
+    def list_hosts(self) -> list[HostView]:
         hosts = self.session.scalars(select(Host).order_by(Host.name))
         return [host_view(self.session, h) for h in hosts]
 

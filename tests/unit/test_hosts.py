@@ -186,4 +186,4 @@ def test_R_DOM_07_host_changes_write_events(
 def test_list_hosts_sorted(hosts: HostService) -> None:
     hosts.create("ns2.other.net")
     hosts.create("ns1.other.net")
-    assert [h.name for h in hosts.list()] == ["ns1.other.net", "ns2.other.net"]
+    assert [h.name for h in hosts.list_hosts()] == ["ns1.other.net", "ns2.other.net"]
