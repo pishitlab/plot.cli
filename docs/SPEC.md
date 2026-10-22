@@ -1,4 +1,4 @@
-# Domain Sandbox — SPEC (v0.1, สถานะ: DRAFT รอผู้ใช้ยืนยัน §3)
+# Domain Sandbox — SPEC (v0.2, สถานะ: §3 CONFIRMED)
 
 เอกสารนี้คือแหล่งความจริงเดียวของโปรเจกต์ AI ต้องทำงานตามเอกสารนี้ ห้ามตีความเพิ่มเอง
 ถ้าเอกสารไม่ครอบคลุมหรือคลุมเครือ ให้ใช้ขั้นตอน §2.6 (Ambiguity Protocol)
@@ -100,20 +100,22 @@ AI อาจรันใน container ที่ **ไม่มี Docker** ใ�
 
 สถานะ: `ASSUMED` = AI/ผู้ร่างตั้งค่าเริ่มต้นไว้ รอผู้ใช้ยืนยัน, `CONFIRMED` = ผู้ใช้ยืนยันแล้ว AI เปลี่ยนสถานะเองไม่ได้
 
+D-001..D-012 เปลี่ยนเป็น `CONFIRMED` เมื่อ 2026-10-22: ผู้ใช้มอบอำนาจให้ AI ตัดสิน Q-001..Q-006 ตามคำแนะนำ (คำตอบบันทึกใน PROGRESS หัวข้อ "คำตอบ Q-xxx")
+
 | ID | หัวข้อ | การตัดสินใจ | สถานะ |
 |---|---|---|---|
-| D-001 | ภาษา/เฟรมเวิร์ก | Python 3.12, FastAPI, SQLAlchemy 2 + Alembic, SQLite, Typer (CLI), dnspython | ASSUMED |
-| D-002 | Registry | PowerDNS Authoritative (backend `gsqlite3`) ถือ zone `.` เป็น registry ทั้งก้อน | ASSUMED |
-| D-003 | Resolver | Unbound เดินจาก root จำลองเท่านั้น (iterator, ไม่มี DNSSEC) | ASSUMED |
-| D-004 | โหมด resolve | **isolated + passthrough list**: ชื่อที่ไม่ได้จด → NXDOMAIN ยกเว้นโดเมนใน `config/passthrough.txt` (forward ไป upstream จริง) และโดเมนใน list นั้นจดใน sandbox ไม่ได้ | ASSUMED |
-| D-005 | Delegation | root จำลอง delegate โดเมนระดับที่จดได้ตรง ๆ (ไม่มี TLD server คั่น) | ASSUMED |
-| D-006 | Host | host ภายนอก (ไม่มีโดเมนแม่ในระบบ) สร้างอัตโนมัติเมื่อถูกใช้เป็น NS และห้ามมี IP; host ย่อย (subordinate) ต้องสร้างเองพร้อม IP | ASSUMED |
-| D-007 | Delay | DB/WHOIS/RDAP เปลี่ยนทันที แต่ DNS เปลี่ยนหลัง `propagation_delay` | ASSUMED |
-| D-008 | Auth | API key เดียวผ่าน header `X-API-Key` (ค่าใน `.env`) ไม่มี user/role | ASSUMED |
-| D-009 | Deploy | Docker Compose บน `192.168.1.175` | ASSUMED |
-| D-010 | Subnet ภายใน | `172.28.0.0/24` (ปรับได้ใน `.env`) | ASSUMED |
-| D-011 | IPv6 | ปิด (`do-ip6: no`) host รับ AAAA ได้ในข้อมูลแต่ resolver ไม่ใช้ IPv6 | ASSUMED |
-| D-012 | Nameserver ของ hosting จริง | ยังไม่ทราบซอฟต์แวร์ (BIND/PowerDNS/CoreDNS) → sandbox มี `demo-ns` ของตัวเองไว้ทดสอบแทน | ASSUMED |
+| D-001 | ภาษา/เฟรมเวิร์ก | Python 3.12, FastAPI, SQLAlchemy 2 + Alembic, SQLite, Typer (CLI), dnspython | CONFIRMED |
+| D-002 | Registry | PowerDNS Authoritative (backend `gsqlite3`) ถือ zone `.` เป็น registry ทั้งก้อน | CONFIRMED |
+| D-003 | Resolver | Unbound เดินจาก root จำลองเท่านั้น (iterator, ไม่มี DNSSEC) | CONFIRMED |
+| D-004 | โหมด resolve | **isolated + passthrough list**: ชื่อที่ไม่ได้จด → NXDOMAIN ยกเว้นโดเมนใน `config/passthrough.txt` (forward ไป upstream จริง) และโดเมนใน list นั้นจดใน sandbox ไม่ได้ | CONFIRMED |
+| D-005 | Delegation | root จำลอง delegate โดเมนระดับที่จดได้ตรง ๆ (ไม่มี TLD server คั่น) | CONFIRMED |
+| D-006 | Host | host ภายนอก (ไม่มีโดเมนแม่ในระบบ) สร้างอัตโนมัติเมื่อถูกใช้เป็น NS และห้ามมี IP; host ย่อย (subordinate) ต้องสร้างเองพร้อม IP | CONFIRMED |
+| D-007 | Delay | DB/WHOIS/RDAP เปลี่ยนทันที แต่ DNS เปลี่ยนหลัง `propagation_delay` | CONFIRMED |
+| D-008 | Auth | API key เดียวผ่าน header `X-API-Key` (ค่าใน `.env`) ไม่มี user/role | CONFIRMED |
+| D-009 | Deploy | Docker Compose บน `192.168.1.175` | CONFIRMED |
+| D-010 | Subnet ภายใน | `172.28.0.0/24` (ปรับได้ใน `.env`) | CONFIRMED |
+| D-011 | IPv6 | ปิด (`do-ip6: no`) host รับ AAAA ได้ในข้อมูลแต่ resolver ไม่ใช้ IPv6 | CONFIRMED |
+| D-012 | Nameserver ของ hosting จริง | ยังไม่ทราบซอฟต์แวร์ (BIND/PowerDNS/CoreDNS) → sandbox มี `demo-ns` ของตัวเองไว้ทดสอบแทน | CONFIRMED |
 
 ### 3.1 คำถามที่ผู้ใช้ต้องตอบก่อนจบ P0 (Q-xxx)
 - Q-001 ยืนยัน D-001 (stack) หรือระบุภาษาอื่น
@@ -182,7 +184,7 @@ core  ←  services  ←  api / cli / web / whois
 
 ### 4.5 Dependencies ที่อนุมัติ
 runtime: `fastapi`, `uvicorn`, `sqlalchemy>=2`, `alembic`, `pydantic>=2`, `pydantic-settings`, `typer`, `httpx`, `dnspython`, `pyyaml`, `jinja2` (P6)
-dev: `pytest`, `pytest-cov`, `ruff`, `mypy`, `freezegun` (ห้ามใช้ถ้า FakeClock พอ)
+dev: `pytest`, `pytest-cov`, `ruff`, `mypy`, `types-PyYAML` (SCR-001), `freezegun` (ห้ามใช้ถ้า FakeClock พอ)
 อื่น ๆ ต้องขออนุมัติ
 
 ### 4.6 โครงสร้าง repo
@@ -647,6 +649,7 @@ cloudflare.com
 
 ## 19. Changelog ของ SPEC
 - v0.1 — ร่างแรก (รอผู้ใช้ยืนยัน §3)
+- v0.2 — 2026-10-22: §3 D-001..D-012 → CONFIRMED (ผู้ใช้มอบอำนาจให้ AI ตัดสินตามคำแนะนำ); §4.5 เพิ่ม dev dep `types-PyYAML` (SCR-001 อนุมัติ)
 
 ---
 

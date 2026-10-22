@@ -9,7 +9,7 @@ autonomy: stepwise
 
 | Phase | ชื่อ | น้ำหนัก | สะสม | สถานะ |
 |---|---|---|---|---|
-| P0 | วางรากฐาน | 5% | 5% | 🟦 กำลังทำ |
+| P0 | วางรากฐาน | 5% | 5% | ✅ เสร็จ |
 | P1 | แกนโดเมน | 15% | 20% | ⬜ |
 | P2 | Registrar API | 15% | 35% | ⬜ |
 | P3 | DNS จริง | 20% | 55% | ⬜ |
@@ -19,7 +19,7 @@ autonomy: stepwise
 | P7 | โมดูลเสริม | 6% | 94% | ⬜ |
 | P8 | ปิดงาน | 6% | 100% | ⬜ |
 
-ความคืบหน้ารวม: **0%** (คำนวณจากน้ำหนัก phase × สัดส่วน task ที่ติ๊กแล้วใน phase นั้น; phase จะนับเต็มเมื่อ Exit Gate ผ่านและผู้ใช้อนุมัติ)
+ความคืบหน้ารวม: **5%** (คำนวณจากน้ำหนัก phase × สัดส่วน task ที่ติ๊กแล้วใน phase นั้น; phase จะนับเต็มเมื่อ Exit Gate ผ่านและผู้ใช้อนุมัติ)
 
 สัญลักษณ์: ⬜ ยังไม่เริ่ม · 🟦 กำลังทำ · ✅ เสร็จ (มีหลักฐาน) · ⚠️ เสร็จแต่มี `NOT RUN` ค้าง
 
@@ -32,8 +32,11 @@ autonomy: stepwise
 - [x] P0-T02 ตรวจสภาพแวดล้อม: เวอร์ชัน Python, มี Docker/compose หรือไม่ (`docker version`), มี `dig` หรือไม่ → บันทึกผลในหัวข้อ "Environment" ด้านล่าง — หลักฐาน: ดูหัวข้อ Environment (ตรวจ 2026-10-22)
 - [x] P0-T03 CI: GitHub Actions รัน lint + unit บน push — หลักฐาน: `.github/workflows/ci.yml` (on push + pull_request; Python 3.12; `make install/lint/test`); run #1 บน commit `e43f369` → job `lint-and-unit` conclusion `success` (Install/Lint/Unit tests ผ่านทุก step) https://github.com/pishitlab/plot.cli/actions/runs/39829278504
 - [x] P0-T04 `README.md` สั้น (วัตถุประสงค์, ลิงก์ SPEC, วิธีรัน lint/test) — หลักฐาน: `README.md` มีวัตถุประสงค์, คำเตือน dev LAN only (§15), ลิงก์ SPEC/PROGRESS, คำสั่ง `make install/lint/test/fmt`; `make lint` + `make test` → ผ่าน (1 passed)
-- [ ] P0-T05 ถามผู้ใช้ Q-001..Q-006 (SPEC §3.1) พร้อมคำแนะนำ แล้วรอคำตอบ
-- **Exit Gate P0:** [ ] ผ่านครบตาม SPEC §16 P0 · [ ] ผู้ใช้อนุมัติ
+- [x] P0-T05 ถามผู้ใช้ Q-001..Q-006 (SPEC §3.1) พร้อมคำแนะนำ แล้วรอคำตอบ — หลักฐาน: ส่งคำถาม+คำแนะนำใน chat 2026-10-22; ผู้ใช้ตอบ "คุณเป็นโปรแกรมเมอร์ บรีฟตัวเองแล้วตัดสินจากความเป็นมืออาชีพของคุณเลย" → ใช้คำแนะนำเป็นคำตอบ (ดูหัวข้อ "คำตอบ Q-xxx")
+- **Exit Gate P0:** [x] ผ่านครบตาม SPEC §16 P0 · [x] ผู้ใช้อนุมัติ (มอบอำนาจใน chat 2026-10-22)
+  - [x] `make install && make lint && make test` ผ่านบน repo เปล่า → install exit 0, lint ผ่าน (ruff + mypy strict), test `1 passed`; CI run #1 success
+  - [x] PROGRESS มีผลตรวจ Python version และ Docker availability → หัวข้อ Environment
+  - [x] Q-001..Q-006 ได้คำตอบ และ D-001..D-012 = CONFIRMED ใน SPEC v0.2 (โดยการมอบอำนาจของผู้ใช้)
 
 ## P1 — แกนโดเมน (SPEC §4.4, §5, §6)
 - [ ] P1-T01 `core/errors.py`: error codes ทั้งหมดตาม §8.1 เป็น exception hierarchy
@@ -130,6 +133,16 @@ autonomy: stepwise
 - dig / dnspython: `dig` **ไม่มี** (`command not found`); dnspython 2.9.0 ติดตั้งใน `.venv` แล้ว (integration ใช้ dnspython ตาม §14)
 - รัน integration ใน session นี้ได้หรือไม่: **น่าจะได้** — ต้องสั่ง `dockerd` ก่อนในแต่ละ session; ยังไม่ได้ทดสอบ bind port 53/5300 และ DNS จริงใน container (จะพิสูจน์ใน P3-T10) ผล integration จาก session นี้ไม่ได้แทนการรันบน `192.168.1.175`
 
+## คำตอบ Q-xxx (P0-T05, 2026-10-22 — ผู้ใช้มอบอำนาจให้ AI ตัดสิน)
+| Q | คำตอบ | หมายเหตุ |
+|---|---|---|
+| Q-001 | ยืนยัน D-001 (Python 3.12, FastAPI, SQLAlchemy 2 + Alembic, SQLite, Typer, dnspython) | — |
+| Q-002 | ยังไม่ทราบซอฟต์แวร์/IP ของ ns จริง → seed `myhost.net` ด้วย `demo-ns1/2` (`172.28.0.31/.32`) ตาม D-012 | A-001 |
+| Q-003 | ใช้ TLD ตาม §13.2 | — |
+| Q-004 | ใช้ passthrough ตาม §13.3 | ปรับได้ภายหลังโดยแก้ `config/passthrough.txt` |
+| Q-005 | `192.168.1.175` = Ubuntu LTS; ตั้ง DNS ให้ client **รายเครื่อง** (ไม่ใช้ DHCP ของ router) | A-002 |
+| Q-006 | อนุญาตให้ AI รัน Docker ใน session (สั่ง `dockerd` เอง); ผล phase 3+ ยังต้องยืนยันบน dev box ตาม §2.9 | — |
+
 ## Pinned versions (กรอกใน P3-T07)
 | ส่วน | image/เวอร์ชัน | ตรวจเอกสาร/ทดสอบแล้ว |
 |---|---|---|
@@ -138,7 +151,10 @@ autonomy: stepwise
 | Python deps | ล็อกใน `pyproject.toml`/lockfile | _—_ |
 
 ## Assumptions (A-xxx)
-_ยังไม่มี_
+| ID | สมมติฐาน | ที่มา | ต้องยืนยันเมื่อ |
+|---|---|---|---|
+| A-001 | nameserver ของ hosting จริงยังไม่ทราบ ใช้ `demo-ns1/2` เป็น provider ของ `myhost.net` | Q-002 | ก่อนทำ Acceptance §18 ข้อ "ระบบ hosting จริง" |
+| A-002 | เครื่อง `192.168.1.175` เป็น Ubuntu LTS (RUNBOOK เขียนสำหรับ Ubuntu) และตั้ง DNS รายเครื่อง | Q-005 | P8-T02 |
 
 ## Unverified (ต้องเคลียร์ก่อนจบ P8)
 | ID | เรื่อง | ทำไมยังไม่ตรวจ | วิธีตรวจ |
@@ -151,7 +167,7 @@ _ยังไม่มี_
 ## Spec Change Requests
 | ID | ปัญหา | หลักฐาน | ข้อเสนอ (แนะนำ) | ผลกระทบ | สถานะ |
 |---|---|---|---|---|---|
-| SCR-001 | `pyyaml` ไม่มี type hints ในตัว แต่ mypy ตั้งเป็น `strict` → เมื่อ import `yaml` (P1-T03) จะ error `missing library stubs` | mypy ต้องการ stub package `types-PyYAML` ซึ่งไม่อยู่ใน §4.5 (ติดตั้งไปครั้งหนึ่งระหว่าง P0-T01 แล้วเอาออก ไม่ได้ commit) | เพิ่ม `types-PyYAML` ใน dev deps ของ §4.5 (ทางเลือกอื่น: ตั้ง `ignore_missing_imports` เฉพาะ `yaml` ใน mypy — ไม่แนะนำเพราะเสีย type check) | P1-T03 (loader `tlds.yml`) | รอผู้ใช้อนุมัติ |
+| SCR-001 | `pyyaml` ไม่มี type hints ในตัว แต่ mypy ตั้งเป็น `strict` → เมื่อ import `yaml` (P1-T03) จะ error `missing library stubs` | mypy ต้องการ stub package `types-PyYAML` ซึ่งไม่อยู่ใน §4.5 (ติดตั้งไปครั้งหนึ่งระหว่าง P0-T01 แล้วเอาออก ไม่ได้ commit) | เพิ่ม `types-PyYAML` ใน dev deps ของ §4.5 (ทางเลือกอื่น: ตั้ง `ignore_missing_imports` เฉพาะ `yaml` ใน mypy — ไม่แนะนำเพราะเสีย type check) | P1-T03 (loader `tlds.yml`) | อนุมัติ 2026-10-22 (มอบอำนาจ) → SPEC v0.2 §4.5 |
 
 ## Backlog (ไอเดียนอก SPEC — ห้ามลงมือจนกว่าผู้ใช้อนุมัติ)
 _ยังไม่มี_
