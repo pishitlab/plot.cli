@@ -14,8 +14,11 @@ lint:
 	$(BIN)/ruff format --check src tests
 	$(BIN)/mypy
 
+# Coverage gate for core/ and services/ (SPEC §14: >= 90%).
+COV := --cov=plot.core --cov=plot.services --cov-branch --cov-report=term-missing:skip-covered --cov-fail-under=90
+
 test:
-	$(BIN)/pytest -m "not integration"
+	$(BIN)/pytest -m "not integration" $(COV)
 
 fmt:
 	$(BIN)/ruff format src tests

@@ -10,7 +10,7 @@ autonomy: stepwise
 | Phase | ชื่อ | น้ำหนัก | สะสม | สถานะ |
 |---|---|---|---|---|
 | P0 | วางรากฐาน | 5% | 5% | ✅ เสร็จ |
-| P1 | แกนโดเมน | 15% | 20% | 🟦 กำลังทำ |
+| P1 | แกนโดเมน | 15% | 20% | ✅ gate ผ่าน รอผู้ใช้อนุมัติ |
 | P2 | Registrar API | 15% | 35% | ⬜ |
 | P3 | DNS จริง | 20% | 55% | ⬜ |
 | P4 | CLI | 10% | 65% | ⬜ |
@@ -19,7 +19,7 @@ autonomy: stepwise
 | P7 | โมดูลเสริม | 6% | 94% | ⬜ |
 | P8 | ปิดงาน | 6% | 100% | ⬜ |
 
-ความคืบหน้ารวม: **5%** (คำนวณจากน้ำหนัก phase × สัดส่วน task ที่ติ๊กแล้วใน phase นั้น; phase จะนับเต็มเมื่อ Exit Gate ผ่านและผู้ใช้อนุมัติ)
+ความคืบหน้ารวม: **20%** (P1 task ครบ 12/12, gate ผ่าน; นับเต็มเมื่อผู้ใช้อนุมัติ) (คำนวณจากน้ำหนัก phase × สัดส่วน task ที่ติ๊กแล้วใน phase นั้น; phase จะนับเต็มเมื่อ Exit Gate ผ่านและผู้ใช้อนุมัติ)
 
 สัญลักษณ์: ⬜ ยังไม่เริ่ม · 🟦 กำลังทำ · ✅ เสร็จ (มีหลักฐาน) · ⚠️ เสร็จแต่มี `NOT RUN` ค้าง
 
@@ -50,8 +50,11 @@ autonomy: stepwise
 - [x] P1-T09 `services/domains.py` (check/register/renew/delete/status) + tests R-DOM-01..05 — หลักฐาน: `src/plot/services/domains.py` (`DomainService` check/register/get/list_domains/renew/delete/update_status/set_overrides, `remove_domain` ใช้ร่วมกับ purge, แจ้ง publisher รวมโดเมนเจ้าของ glue); `tests/unit/test_domains.py` มี `test_R_DOM_01_*`..`test_R_DOM_05_*` + `test_R_DOM_07_domain_changes_write_events`; พบและแก้บั๊ก FK ตอนลบโดเมนที่ใช้ host ย่อยของตัวเองเป็น NS (test R-DOM-04 จับได้); Assumption A-009; `make lint` ผ่าน; `make test` → 155 passed
 - [x] P1-T10 `services/nameservers.py` + tests R-NS-01..06 — หลักฐาน: `src/plot/services/nameservers.py` (`replace_nameservers`: validate ทั้งชุดก่อนเขียน, สร้าง external host อัตโนมัติ, ลบ external ที่ไม่มีใครใช้, คืนชุดโดเมนที่ต้อง publish ใหม่รวมเจ้าของ glue) + `DomainService.set_nameservers` และ `register(nameservers=...)`; `tests/unit/test_nameservers.py` มี `test_R_NS_01_*`..`test_R_NS_06_*` + ตรวจว่า error แล้วไม่มีอะไรถูกเขียน; Assumption A-010; `make lint` ผ่าน; `make test` → 175 passed
 - [x] P1-T11 `services/lifecycle.py` (expiry, grace, purge) + tests R-DOM-06 — หลักฐาน: `src/plot/services/lifecycle.py` (`LifecycleService.run` purge โดเมนที่เกิน grace + แจ้ง publish โดเมนที่เพิ่งหมดอายุ, `expire_now`); `tests/unit/test_lifecycle.py` มี `test_R_DOM_06_*` 8 ตัว (ขอบเขตเวลา expired/grace, renew ใน grace, purge แล้วชื่อว่าง, purge ถอด host ย่อยออกจากโดเมนอื่น); test จับบั๊กลำดับ UPDATE ชน `UNIQUE(domain_id, position)` ที่ผมเพิ่มเกิน §5 → เอา constraint นั้นออกจาก model และ migration 0001 (ยังไม่เคย deploy); Assumption A-011; `make lint` ผ่าน; `make test` → 184 passed
-- [ ] P1-T12 สคริปต์ตรวจว่าทุกรหัสกติกา R-NAME/DOM/HOST/NS มี test และตรวจ layering (`services` ไม่ import `api|cli|web|dns`) ผูกกับ `make test`
-- **Exit Gate P1:** [ ] ผ่านครบตาม SPEC §16 P1 · [ ] ผู้ใช้อนุมัติ
+- [x] P1-T12 สคริปต์ตรวจว่าทุกรหัสกติกา R-NAME/DOM/HOST/NS มี test และตรวจ layering (`services` ไม่ import `api|cli|web|dns`) ผูกกับ `make test` — หลักฐาน: `tests/unit/test_governance.py` (รันใน `make test`): อ่านรหัส R-NAME/DOM/HOST/NS จากตาราง §6 ของ SPEC (25 ข้อ) แล้วเทียบกับชื่อ `test_R_..._` ใน `tests/`; `services/` ห้าม import `plot.api|cli|web|dns|whois`; `core/` import ได้เฉพาะ stdlib + pydantic/pydantic_settings/yaml (A-003); `services/` ห้ามเรียก `datetime.now`/`time.sleep` ฯลฯ; ลองใส่ violation ทั้ง 4 แบบแล้ว → 4 failed ตามคาด (revert แล้ว); `make test` เพิ่ม coverage gate `--cov-fail-under=90` สำหรับ core+services; `make lint` ผ่าน; `make test` → 189 passed, coverage 99.88%
+- **Exit Gate P1:** [x] ผ่านครบตาม SPEC §16 P1 · [ ] ผู้ใช้อนุมัติ
+  - [x] ทุก R-NAME/R-DOM/R-HOST/R-NS มี test อย่างน้อย 1 ตัว → `test_every_business_rule_has_a_named_test` ผ่าน (25/25 รหัส)
+  - [x] coverage `core/`+`services/` ≥ 90% → `make test`: `Required test coverage of 90% reached. Total coverage: 99.88%` (branch coverage; ขาดเพียง 1 branch ใน `services/hosts.py`)
+  - [x] `services/` ไม่ import `api|cli|web|dns` → `test_services_do_not_import_outer_layers` ผ่าน (พิสูจน์ว่าจับได้จริงด้วยการใส่ violation)
 
 ## P2 — Registrar API (SPEC §8)
 - [ ] P2-T01 `api/app.py`, `api/deps.py`, auth `X-API-Key` (constant-time), `/health`
@@ -186,3 +189,4 @@ _ยังไม่มี_
 |---|---|---|---|
 | 2026-10-22 | — | สร้างเอกสารควบคุมงาน (CLAUDE.md, SPEC.md, PROGRESS.md) | — |
 | 2026-10-22 | P0-T01..T04 | โครงโปรเจกต์, ตรวจสภาพแวดล้อม, CI, README สั้น; ยื่น SCR-001 (`types-PyYAML`); P0-T05 ส่งคำถาม Q-001..Q-006 ให้ผู้ใช้แล้ว รอคำตอบ | `make lint` ผ่าน, `make test` → 1 passed; CI run #1 success |
+| 2026-10-22 | P0-T05, P1-T01..T12 | ผู้ใช้มอบอำนาจตัดสิน Q-001..Q-006 → SPEC v0.2; ทำแกนโดเมน P1 ครบ (errors, names, tlds, clock/settings, DB+migration, ports/fakes, events, hosts, domains, nameservers, lifecycle, governance tests); Assumptions A-003..A-011 | `make lint` ผ่าน; `make test` → 189 passed, coverage core+services 99.88% |
