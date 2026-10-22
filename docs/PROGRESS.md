@@ -9,7 +9,7 @@ autonomy: stepwise
 
 | Phase | ชื่อ | น้ำหนัก | สะสม | สถานะ |
 |---|---|---|---|---|
-| P0 | วางรากฐาน | 5% | 5% | ⬜ ยังไม่เริ่ม |
+| P0 | วางรากฐาน | 5% | 5% | 🟦 กำลังทำ |
 | P1 | แกนโดเมน | 15% | 20% | ⬜ |
 | P2 | Registrar API | 15% | 35% | ⬜ |
 | P3 | DNS จริง | 20% | 55% | ⬜ |
@@ -28,7 +28,7 @@ autonomy: stepwise
 ---
 
 ## P0 — วางรากฐาน (SPEC §16 P0)
-- [ ] P0-T01 โครงโปรเจกต์: `pyproject.toml`, `Makefile` (install/lint/test/fmt), ruff, mypy, pytest, `.gitignore`, `.env.example`, โครง `src/plot`, `tests/`
+- [x] P0-T01 โครงโปรเจกต์: `pyproject.toml`, `Makefile` (install/lint/test/fmt), ruff, mypy, pytest, `.gitignore`, `.env.example`, โครง `src/plot`, `tests/` — หลักฐาน: `make install` → exit 0 (venv `.venv`, Python 3.12.3); `make lint` → ruff `All checks passed!`, `4 files already formatted`, mypy (strict) `Success: no issues found in 4 source files`; `make test` → `1 passed in 0.02s`
 - [ ] P0-T02 ตรวจสภาพแวดล้อม: เวอร์ชัน Python, มี Docker/compose หรือไม่ (`docker version`), มี `dig` หรือไม่ → บันทึกผลในหัวข้อ "Environment" ด้านล่าง
 - [ ] P0-T03 CI: GitHub Actions รัน lint + unit บน push
 - [ ] P0-T04 `README.md` สั้น (วัตถุประสงค์, ลิงก์ SPEC, วิธีรัน lint/test)
@@ -148,7 +148,9 @@ _ยังไม่มี_
 | U-004 | glue ที่เป็น private IP ผ่านตัวกรองของ Unbound เมื่อไม่มี `private-address` | ยังไม่มีการรัน | integration test ใน P3-T10 |
 
 ## Spec Change Requests
-_ยังไม่มี_
+| ID | ปัญหา | หลักฐาน | ข้อเสนอ (แนะนำ) | ผลกระทบ | สถานะ |
+|---|---|---|---|---|---|
+| SCR-001 | `pyyaml` ไม่มี type hints ในตัว แต่ mypy ตั้งเป็น `strict` → เมื่อ import `yaml` (P1-T03) จะ error `missing library stubs` | mypy ต้องการ stub package `types-PyYAML` ซึ่งไม่อยู่ใน §4.5 (ติดตั้งไปครั้งหนึ่งระหว่าง P0-T01 แล้วเอาออก ไม่ได้ commit) | เพิ่ม `types-PyYAML` ใน dev deps ของ §4.5 (ทางเลือกอื่น: ตั้ง `ignore_missing_imports` เฉพาะ `yaml` ใน mypy — ไม่แนะนำเพราะเสีย type check) | P1-T03 (loader `tlds.yml`) | รอผู้ใช้อนุมัติ |
 
 ## Backlog (ไอเดียนอก SPEC — ห้ามลงมือจนกว่าผู้ใช้อนุมัติ)
 _ยังไม่มี_
