@@ -18,5 +18,6 @@ test:
 	$(BIN)/pytest -m "not integration"
 
 fmt:
+	$(BIN)/ruff format src tests
 	$(BIN)/ruff check --fix src tests
 	$(BIN)/ruff format src tests
