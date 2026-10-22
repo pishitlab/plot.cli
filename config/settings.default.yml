@@ -1,0 +1,6 @@
+# Runtime settings defaults (SPEC §13.4). Changed at runtime via /admin/settings.
+propagation_delay: 0
+ns_ttl: 300
+default_years: 1
+expiry_grace_days: 30
+flush_on_apply: true

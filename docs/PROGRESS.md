@@ -42,7 +42,7 @@ autonomy: stepwise
 - [x] P1-T01 `core/errors.py`: error codes ทั้งหมดตาม §8.1 เป็น exception hierarchy — หลักฐาน: `src/plot/core/errors.py` (22 codes §8.1, base `PlotError` + กลุ่ม 400/404/409); `tests/unit/test_errors.py` ตรวจว่าทุก code ใน §8.1 มี class เดียวและ status ตรง; `make lint` ผ่าน; `make test` → 4 passed
 - [x] P1-T02 `core/names.py` + tests R-NAME-01..03 — หลักฐาน: `src/plot/core/names.py` (`normalize_name`, `split_registrable` จับ suffix ยาวสุด, `is_within`, `name_and_ancestors`); tests `test_R_NAME_01_*`, `test_R_NAME_02_*`, `test_R_NAME_03_*` ใน `tests/unit/test_names.py` (รวมกรณี non-ASCII ที่ lowercase แล้วกลายเป็น ASCII); `make lint` ผ่าน; `make test` → 36 passed
 - [x] P1-T03 `core/tlds.py` + loader `config/tlds.yml` + passthrough loader + tests R-NAME-04..05 — หลักฐาน: `src/plot/core/tlds.py` (`NamePolicy.parse_registrable` ใช้ R-NAME-01..05 ตามลำดับ, `parse_tlds`/`load_tlds`, `parse_passthrough`/`load_passthrough`; `root-servers.net` สงวนเสมอ) + `config/tlds.yml`, `config/passthrough.txt` ตามค่าเริ่มต้น §13.2/§13.3; tests `test_R_NAME_04_*`, `test_R_NAME_05_*` + ตรวจ config ผิดรูปแบบ ใน `tests/unit/test_tlds.py`; Assumption A-003, A-004; `make lint` ผ่าน; `make test` → 62 passed
-- [ ] P1-T04 `core/clock.py` (`Clock`, `SystemClock`, `FakeClock`) และ `core/settings.py`
+- [x] P1-T04 `core/clock.py` (`Clock`, `SystemClock`, `FakeClock`) และ `core/settings.py` — หลักฐาน: `src/plot/core/clock.py` (`Clock` Protocol, `SystemClock`, `FakeClock` บังคับ UTC/ห้ามถอยหลัง, `add_years` ตามปฏิทิน) + `src/plot/core/settings.py` (`EnvConfig` จาก env/.env, `RuntimeSettings` + `config/settings.default.yml` ตาม §13.4); tests `test_clock.py`, `test_settings.py`; Assumption A-005; `make lint` ผ่าน; `make test` → 76 passed
 - [ ] P1-T05 `db/models.py`, `db/session.py`, migration แรกตาม §5
 - [ ] P1-T06 `services/ports.py` (Protocol: `DnsPublisher`, `ResolverControl`) + fakes ใน `tests/fakes.py`
 - [ ] P1-T07 `services/events.py` (audit log) + tests R-DOM-07
@@ -157,6 +157,7 @@ autonomy: stepwise
 | A-002 | เครื่อง `192.168.1.175` เป็น Ubuntu LTS (RUNBOOK เขียนสำหรับ Ubuntu) และตั้ง DNS รายเครื่อง | Q-005 | P8-T02 |
 | A-003 | §4.4 ให้ `core/` import ได้แค่ stdlib + pydantic แต่ §4.6/P1-T03/P1-T04 วาง loader ของ `tlds.yml`/settings ไว้ใน `core/` → อนุญาตให้ `core/` import `yaml` และ `pydantic_settings` เพิ่ม (เป็น lib อ่าน config ที่อนุมัติแล้วใน §4.5) ห้าม import อย่างอื่น; test layering (P1-T12) บังคับรายการนี้ | §2.6 | — |
 | A-004 | `min_ns` ใน `tlds.yml` ที่ไม่ระบุ = 2; ค่าที่ยอมรับ 1..13 (ขอบบนตาม R-NS-01) ไฟล์ config ผิดรูปแบบ → error ตอนโหลด (registrar ไม่ start) | §2.6 | — |
+| A-005 | `EnvConfig`: `API_KEY`/`PDNS_API_KEY` ไม่มีค่าเริ่มต้น (ต้องตั้งเสมอ ไม่ใช้ `change-me` เงียบ ๆ); `BIND_ADDR` ที่ไม่ตั้ง = `127.0.0.1` (ปลอดภัยตาม N10) ค่าอื่นตาม §13.1; `RuntimeSettings` เป็น strict (ไม่แปลง `"300"` → 300) | §2.6 | — |
 
 ## Unverified (ต้องเคลียร์ก่อนจบ P8)
 | ID | เรื่อง | ทำไมยังไม่ตรวจ | วิธีตรวจ |
