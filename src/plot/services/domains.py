@@ -1,6 +1,7 @@
 """Domains: check, register, renew, delete, status, overrides (R-DOM-01..05, SPEC §6.2)."""
 
 import secrets
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Final
@@ -29,6 +30,7 @@ from plot.services.hosts import (
     host_used_by,
     host_view,
 )
+from plot.services.nameservers import replace_nameservers
 
 MAX_YEARS = 10
 SETTABLE_STATUSES = frozenset({"clientHold", "serverHold", "pendingDelete"})
@@ -177,7 +179,13 @@ class DomainService:
             return CheckResult(parsed.name, False, DomainExists.code)
         return CheckResult(parsed.name, True)
 
-    def register(self, raw_name: str, owner: str, years: int | None = None) -> DomainView:
+    def register(
+        self,
+        raw_name: str,
+        owner: str,
+        years: int | None = None,
+        nameservers: Sequence[str] = (),
+    ) -> DomainView:
         parsed = self.ctx.policy.parse_registrable(raw_name)
         owner = _parse_owner(owner)
         years = self.ctx.settings.default_years if years is None else years
@@ -200,9 +208,10 @@ class DomainService:
         )
         self.session.add(domain)
         self.session.flush()
+        changed = replace_nameservers(self.ctx, domain, nameservers)
         view = domain_view(self.ctx, domain)
         self.ctx.record("domain.register", domain_name=domain.name, after=view.to_event())
-        self.ctx.publisher.domains_changed(self.session, {domain.name})
+        self.ctx.publisher.domains_changed(self.session, changed)
         return view
 
     def get(self, raw_name: str) -> DomainView:
@@ -238,6 +247,23 @@ class DomainService:
         before = domain_view(self.ctx, domain)
         domain.expires_at = new_expiry
         return self._changed(domain, "domain.renew", before)
+
+    def set_nameservers(self, raw_name: str, nameservers: Sequence[str]) -> DomainView:
+        """R-NS-01..06: replace the whole set; an empty set removes the delegation (R-NS-05)."""
+        domain = self.load(raw_name)
+        before = domain_view(self.ctx, domain)
+        changed = replace_nameservers(self.ctx, domain, nameservers)
+        domain.updated_at = self.ctx.clock.now()
+        self.session.flush()
+        after = domain_view(self.ctx, domain)
+        self.ctx.record(
+            "domain.nameservers",
+            domain_name=domain.name,
+            before=before.to_event(),
+            after=after.to_event(),
+        )
+        self.ctx.publisher.domains_changed(self.session, changed)
+        return after
 
     def delete(self, raw_name: str) -> None:
         """R-DOM-04."""

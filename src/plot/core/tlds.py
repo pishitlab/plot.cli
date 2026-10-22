@@ -39,7 +39,8 @@ class NamePolicy:
         return any(is_within(name, r) for r in self.reserved)
 
     def min_ns(self, suffix: str) -> int:
-        return self.suffixes[suffix].min_ns
+        # A suffix removed from tlds.yml after registration falls back to the default.
+        return self.suffixes.get(suffix, SuffixRule()).min_ns
 
     def parse_registrable(self, raw: str) -> RegistrableName:
         """Apply R-NAME-01..05 in order and return the parts of a registrable name."""
