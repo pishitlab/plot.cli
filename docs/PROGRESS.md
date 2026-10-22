@@ -40,7 +40,7 @@ autonomy: stepwise
 
 ## P1 — แกนโดเมน (SPEC §4.4, §5, §6)
 - [x] P1-T01 `core/errors.py`: error codes ทั้งหมดตาม §8.1 เป็น exception hierarchy — หลักฐาน: `src/plot/core/errors.py` (22 codes §8.1, base `PlotError` + กลุ่ม 400/404/409); `tests/unit/test_errors.py` ตรวจว่าทุก code ใน §8.1 มี class เดียวและ status ตรง; `make lint` ผ่าน; `make test` → 4 passed
-- [ ] P1-T02 `core/names.py` + tests R-NAME-01..03
+- [x] P1-T02 `core/names.py` + tests R-NAME-01..03 — หลักฐาน: `src/plot/core/names.py` (`normalize_name`, `split_registrable` จับ suffix ยาวสุด, `is_within`, `name_and_ancestors`); tests `test_R_NAME_01_*`, `test_R_NAME_02_*`, `test_R_NAME_03_*` ใน `tests/unit/test_names.py` (รวมกรณี non-ASCII ที่ lowercase แล้วกลายเป็น ASCII); `make lint` ผ่าน; `make test` → 36 passed
 - [ ] P1-T03 `core/tlds.py` + loader `config/tlds.yml` + passthrough loader + tests R-NAME-04..05
 - [ ] P1-T04 `core/clock.py` (`Clock`, `SystemClock`, `FakeClock`) และ `core/settings.py`
 - [ ] P1-T05 `db/models.py`, `db/session.py`, migration แรกตาม §5
