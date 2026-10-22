@@ -29,7 +29,7 @@ autonomy: stepwise
 
 ## P0 — วางรากฐาน (SPEC §16 P0)
 - [x] P0-T01 โครงโปรเจกต์: `pyproject.toml`, `Makefile` (install/lint/test/fmt), ruff, mypy, pytest, `.gitignore`, `.env.example`, โครง `src/plot`, `tests/` — หลักฐาน: `make install` → exit 0 (venv `.venv`, Python 3.12.3); `make lint` → ruff `All checks passed!`, `4 files already formatted`, mypy (strict) `Success: no issues found in 4 source files`; `make test` → `1 passed in 0.02s`
-- [ ] P0-T02 ตรวจสภาพแวดล้อม: เวอร์ชัน Python, มี Docker/compose หรือไม่ (`docker version`), มี `dig` หรือไม่ → บันทึกผลในหัวข้อ "Environment" ด้านล่าง
+- [x] P0-T02 ตรวจสภาพแวดล้อม: เวอร์ชัน Python, มี Docker/compose หรือไม่ (`docker version`), มี `dig` หรือไม่ → บันทึกผลในหัวข้อ "Environment" ด้านล่าง — หลักฐาน: ดูหัวข้อ Environment (ตรวจ 2026-10-22)
 - [ ] P0-T03 CI: GitHub Actions รัน lint + unit บน push
 - [ ] P0-T04 `README.md` สั้น (วัตถุประสงค์, ลิงก์ SPEC, วิธีรัน lint/test)
 - [ ] P0-T05 ถามผู้ใช้ Q-001..Q-006 (SPEC §3.1) พร้อมคำแนะนำ แล้วรอคำตอบ
@@ -124,10 +124,11 @@ autonomy: stepwise
 ---
 
 ## Environment (กรอกใน P0-T02)
-- Python: _ยังไม่ตรวจ_
-- Docker / compose: _ยังไม่ตรวจ_
-- dig / dnspython: _ยังไม่ตรวจ_
-- รัน integration ใน session นี้ได้หรือไม่: _ยังไม่ทราบ_
+ตรวจเมื่อ 2026-10-22 ใน cloud container ของ AI (ไม่ใช่ `192.168.1.175`)
+- Python: `python3.12 --version` → `Python 3.12.3` (ใช้ทำ `.venv` ผ่าน `make install`); `python3` ของระบบ = 3.13.16 (ไม่ใช้)
+- Docker / compose: `docker version` → Client 29.9.1; `docker compose version` → v5.6.0. daemon **ไม่ได้รันอยู่ตอนเริ่ม session** (`/var/run/docker.sock` ไม่มี) แต่สั่ง `dockerd` เองได้ (root) → Server 29.9.1, storage `overlayfs`, cgroup v1. ทดสอบแล้ว: `docker run --rm hello-world` ผ่าน, `docker pull powerdns/pdns-auth-49` ผ่าน, `docker network create --subnet 172.28.0.0/24` + container ได้ IP `172.28.0.99` ผ่าน (ลบ network/image ทดสอบแล้ว)
+- dig / dnspython: `dig` **ไม่มี** (`command not found`); dnspython 2.9.0 ติดตั้งใน `.venv` แล้ว (integration ใช้ dnspython ตาม §14)
+- รัน integration ใน session นี้ได้หรือไม่: **น่าจะได้** — ต้องสั่ง `dockerd` ก่อนในแต่ละ session; ยังไม่ได้ทดสอบ bind port 53/5300 และ DNS จริงใน container (จะพิสูจน์ใน P3-T10) ผล integration จาก session นี้ไม่ได้แทนการรันบน `192.168.1.175`
 
 ## Pinned versions (กรอกใน P3-T07)
 | ส่วน | image/เวอร์ชัน | ตรวจเอกสาร/ทดสอบแล้ว |
