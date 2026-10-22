@@ -1,0 +1,12 @@
+# Real domains forwarded to UPSTREAM_DNS (SPEC §13.3, D-004).
+# These names and everything below them cannot be registered in the sandbox.
+github.com
+githubusercontent.com
+pypi.org
+pythonhosted.org
+docker.io
+docker.com
+ubuntu.com
+debian.org
+npmjs.org
+cloudflare.com

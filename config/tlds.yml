@@ -1,0 +1,14 @@
+# Registrable suffixes (SPEC §13.2). min_ns defaults to 2 when omitted.
+suffixes:
+  com: {min_ns: 2}
+  net: {min_ns: 2}
+  org: {min_ns: 2}
+  info: {min_ns: 2}
+  io: {min_ns: 2}
+  dev: {min_ns: 2}
+  th: {min_ns: 2}
+  co.th: {min_ns: 2}
+  in.th: {min_ns: 2}
+  or.th: {min_ns: 2}
+  ac.th: {min_ns: 2}
+  go.th: {min_ns: 2}
