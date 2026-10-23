@@ -1,7 +1,7 @@
 """Delayed publishing: pending_changes -> published_state (R-PUB-05, 06, 09)."""
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
 from sqlalchemy import select, update
@@ -103,13 +103,21 @@ class Backoff:
 @dataclass(frozen=True)
 class RunResult:
     applied: list[str]  # domains whose registry data changed
-    error: Exception | None = None
+    error: Exception | None = None  # the first failure of this pass
+    failed: list[str] = field(default_factory=list)  # domains left pending for a retry
 
 
 def apply_due(session: Session, now: datetime, applier: Applier) -> RunResult:
-    """Apply every due change in order. Stops at the first failure so order is kept; the
-    failed change and everything after it stay pending for the next attempt (R-PUB-09)."""
+    """Apply every due change in ``(apply_at, id)`` order.
+
+    A failure only holds back its own domain: that change stays pending for the next
+    attempt (R-PUB-09) while other domains go ahead, so one change the registry rejects
+    cannot stop all publishing. Only the newest due change per domain is applied, so the
+    order within a domain is kept.
+    """
     applied: list[str] = []
+    failed: list[str] = []
+    error: Exception | None = None
     due = due_changes(session, now)
     latest: dict[str, int] = {}
     for c in due:
@@ -122,7 +130,9 @@ def apply_due(session: Session, now: datetime, applier: Applier) -> RunResult:
             try:
                 applier(change.domain_name, current, change.snapshot)
             except Exception as err:
-                return RunResult(applied, err)
+                failed.append(change.domain_name)
+                error = error or err
+                continue
             applied.append(change.domain_name)
         mark_applied(session, change, now)
-    return RunResult(applied)
+    return RunResult(applied, error, failed)

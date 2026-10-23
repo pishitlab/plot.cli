@@ -93,15 +93,27 @@ def test_R_PUB_06_unchanged_snapshot_is_not_reapplied(session: Session) -> None:
     assert published_snapshot(session, "shop.com") is None
 
 
-def test_R_PUB_09_failure_keeps_change_pending_and_order(session: Session) -> None:
+def test_R_PUB_09_failure_keeps_change_pending_without_blocking_others(session: Session) -> None:
     schedule_change(session, "a.com", A, T0, 0)
     schedule_change(session, "b.com", B, T0, 0)
     failing = RecordingApplier(fail_on={"a.com"})
     result = apply_due(session, T0, failing)
-    assert result.applied == [] and isinstance(result.error, ConnectionError)
-    assert [c.domain_name for c in due_changes(session, T0)] == ["a.com", "b.com"]
+    # a.com stays pending for a retry; b.com is not held hostage by it
+    assert result.applied == ["b.com"] and result.failed == ["a.com"]
+    assert isinstance(result.error, ConnectionError)
+    assert [c.domain_name for c in due_changes(session, T0)] == ["a.com"]
     retry = apply_due(session, T0 + timedelta(seconds=1), RecordingApplier())
-    assert retry.applied == ["a.com", "b.com"] and retry.error is None
+    assert retry.applied == ["a.com"] and retry.error is None and retry.failed == []
+
+
+def test_R_PUB_09_order_within_a_failing_domain_is_kept(session: Session) -> None:
+    schedule_change(session, "a.com", A, T0, 0)
+    failing = RecordingApplier(fail_on={"a.com"})
+    apply_due(session, T0, failing)
+    schedule_change(session, "a.com", B, T0 + timedelta(seconds=1), 0)
+    applier = RecordingApplier()
+    apply_due(session, T0 + timedelta(seconds=1), applier)
+    assert applier.calls == [("a.com", None, B)]  # the newer snapshot wins, A never lands
 
 
 def test_R_PUB_09_backoff_1_2_4_capped_at_30() -> None:

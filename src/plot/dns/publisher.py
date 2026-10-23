@@ -127,8 +127,12 @@ class PublishWorker:
             self.backoff.reset()
             return self.interval
         self.healthy = False
+        # The zone may be gone (pdns data lost while we run): reconcile before retrying.
+        self.reconciled = False
         delay = self.backoff.failed()
-        log.warning("publish failed, retrying in %.0fs: %s", delay, result.error)
+        log.warning(
+            "publish failed for %s, retrying in %.0fs: %s", result.failed, delay, result.error
+        )
         return delay
 
     def start(self) -> None:
@@ -147,5 +151,6 @@ class PublishWorker:
             except Exception:
                 log.exception("publish worker pass failed")
                 self.healthy = False
+                self.reconciled = False
                 delay = self.backoff.failed()
             self._stop.wait(delay)

@@ -165,6 +165,8 @@ autonomy: continuous
 ## Hardening ก่อน deploy (ผู้ใช้อนุมัติ 2026-10-23: "ตรวจแบบมืออาชีพ … ทำให้สมบูรณ์ … git เอาไป deploy ได้เลยในครั้งเดียว")
 รายงานตรวจ: [`docs/REVIEW.md`](REVIEW.md) (F1–F18) · commit ขึ้นต้น `P8-Hxx` ตาม ID ของข้อค้นพบ
 - [x] F6 SQLite WAL + busy_timeout 10 วิ + synchronous=NORMAL — หลักฐาน: `test_file_database_uses_wal_and_busy_timeout`, `test_concurrent_writers_wait_instead_of_failing` (3 thread × 20 transaction ไม่มี `database is locked`)
+- [x] F3 publish แยกความล้มเหลวรายโดเมน (โดเมนที่ pdns ปฏิเสธค้าง pending เอง โดเมนอื่น apply ต่อ) — หลักฐาน: `test_R_PUB_09_failure_keeps_change_pending_without_blocking_others`, `test_R_PUB_09_order_within_a_failing_domain_is_kept` (แก้ test เดิมที่ assert ว่าทั้ง batch หยุด เพราะพฤติกรรมนั้นคือข้อบกพร่อง F3 ที่ผู้ใช้อนุมัติให้แก้; R-PUB-09 ยังครบ: change ค้าง pending + retry)
+- [x] F4 publish ล้ม → รอบถัดไป reconcile ก่อน (สร้าง zone `.` คืนถ้า pdns เสียข้อมูล) — หลักฐาน: `test_worker_reconciles_again_after_a_publish_failure`
 
 ## Environment (กรอกใน P0-T02)
 ตรวจเมื่อ 2026-10-22 ใน cloud container ของ AI (ไม่ใช่ `192.168.1.175`)

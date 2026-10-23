@@ -98,3 +98,34 @@ def test_build_and_create_wire_the_registrar(
             == 201
         )
     worker.stop()
+
+
+class CountingZone(FakeRegistry):
+    def __init__(self) -> None:
+        super().__init__()
+        self.reconciles = 0
+
+    def ensure_root_zone(self, root_ip: str) -> None:
+        self.reconciles += 1
+
+
+def test_worker_reconciles_again_after_a_publish_failure(
+    sessions: sessionmaker[Session], clock: FakeClock, policy: NamePolicy
+) -> None:
+    """F4: pdns lost its data while we run -> the next pass recreates the zone first."""
+    zone = CountingZone()
+    publisher = Publisher(
+        zone, FakeResolverControl(), clock, lambda s: RuntimeSettings(), root_ip="172.28.0.10"
+    )
+    worker = PublishWorker(sessions, publisher, interval=0.5)
+    assert worker.run_once() == 0.5 and zone.reconciles == 1
+    with sessions.begin() as session:
+        settings = RuntimeSettings()
+        ctx = ServiceContext(session, clock, publisher, policy, settings, RequestContext("t", "r"))
+        DomainService(ctx).register("shop.com", "a", nameservers=["ns1.x.net", "ns2.x.net"])
+    zone.down = True
+    assert worker.run_once() == 1
+    assert not worker.reconciled and not worker.healthy
+    zone.down = False
+    assert worker.run_once() == 0.5
+    assert zone.reconciles == 2 and worker.healthy and "shop.com" in zone.zone
