@@ -8,9 +8,14 @@ from sqlalchemy.orm import Session
 class FakeDnsPublisher:
     def __init__(self) -> None:
         self.calls: list[frozenset[str]] = []
+        self.reconciled = 0
 
     def domains_changed(self, session: Session, domain_names: Collection[str]) -> None:
         self.calls.append(frozenset(domain_names))
+
+    def reconcile(self, session: Session) -> list[str]:
+        self.reconciled += 1
+        return []
 
     @property
     def changed(self) -> set[str]:

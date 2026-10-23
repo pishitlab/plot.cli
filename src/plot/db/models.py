@@ -11,6 +11,7 @@ from sqlalchemy import (
     Integer,
     String,
     TypeDecorator,
+    false,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -57,6 +58,8 @@ class Domain(Base):
     updated_at: Mapped[datetime]
     ns_ttl_override: Mapped[int | None]
     delay_override: Mapped[int | None]
+    # Provider domains created by `plot seed provider`; kept by /admin/reset.
+    seed: Mapped[bool] = mapped_column(default=False, server_default=false())
 
     statuses: Mapped[list["DomainStatus"]] = relationship(
         back_populates="domain", cascade="all, delete-orphan", order_by="DomainStatus.status"

@@ -119,3 +119,46 @@ class Event(BaseModel):
 
 class EventList(BaseModel):
     items: list[Event]
+
+
+# --- admin ---------------------------------------------------------------------
+
+
+class Settings(BaseModel):
+    propagation_delay: int
+    ns_ttl: int
+    default_years: int
+    expiry_grace_days: int
+    flush_on_apply: bool
+
+
+class SettingsUpdate(RequestBody):
+    """Fields left out keep their current value."""
+
+    propagation_delay: int | None = None
+    ns_ttl: int | None = None
+    default_years: int | None = None
+    expiry_grace_days: int | None = None
+    flush_on_apply: bool | None = None
+
+
+class ResetRequest(RequestBody):
+    prefix: str | None = None
+    all: bool = False
+
+
+class ResetResult(BaseModel):
+    deleted_domains: list[str]
+    deleted_hosts: list[str]
+
+
+class FlushRequest(RequestBody):
+    domain: str | None = None
+
+
+class FlushResult(BaseModel):
+    flushed: str | None
+
+
+class ReconcileResult(BaseModel):
+    fixed: list[str]

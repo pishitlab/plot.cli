@@ -26,6 +26,7 @@ from plot.db.models import Domain, DomainStatus, Event, Host, PendingChange, Pub
 from plot.services.context import ServiceContext
 from plot.services.events import domain_history
 from plot.services.hosts import (
+    EXTERNAL,
     delete_unused_external_hosts,
     glue_owners,
     host_used_by,
@@ -82,6 +83,12 @@ class CheckResult:
     name: str
     available: bool
     reason: str | None = None
+
+
+@dataclass(frozen=True)
+class ResetResult:
+    deleted_domains: list[str]
+    deleted_hosts: list[str]
 
 
 @dataclass(frozen=True)
@@ -314,6 +321,34 @@ class DomainService:
             _check_int("ns_ttl", ns_ttl, maximum=MAX_TTL)
             domain.ns_ttl_override = ns_ttl
         return self._changed(domain, "domain.overrides", before)
+
+    def reset(self, prefix: str | None = None, everything: bool = False) -> ResetResult:
+        """Remove test data: every non-seed domain (or those starting with ``prefix``)
+        and the unused external hosts that match. Seed domains and their hosts stay."""
+        prefix = (prefix or "").strip().lower()
+        if bool(prefix) == everything:
+            raise ValidationFailed("give either a non-empty prefix or all=true")
+        stmt = select(Domain).where(Domain.seed.is_(False)).order_by(Domain.name)
+        host_stmt = select(Host).where(Host.kind == EXTERNAL).order_by(Host.name)
+        if prefix:
+            stmt = stmt.where(Domain.name.startswith(prefix, autoescape=True))
+            host_stmt = host_stmt.where(Host.name.startswith(prefix, autoescape=True))
+        deleted_domains = []
+        for domain in self.session.scalars(stmt).all():
+            remove_domain(self.ctx, domain, action="domain.reset", force=True)
+            deleted_domains.append(domain.name)
+        deleted_hosts = []
+        for host in self.session.scalars(host_stmt).all():
+            if not host_used_by(self.session, host):
+                self.ctx.record(
+                    "host.delete",
+                    host_name=host.name,
+                    before=host_view(self.session, host).to_event(),
+                )
+                self.session.delete(host)
+                deleted_hosts.append(host.name)
+        self.session.flush()
+        return ResetResult(deleted_domains, deleted_hosts)
 
     def load(self, raw_name: str) -> Domain:
         """Find a live domain; one past its grace period counts as purged (R-DOM-06)."""

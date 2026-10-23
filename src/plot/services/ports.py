@@ -20,6 +20,13 @@ class DnsPublisher(Protocol):
         """
         ...
 
+    def reconcile(self, session: Session) -> list[str]:
+        """Repair drift between ``published_state`` and the registry zone (R-PUB-07).
+
+        Returns the names of the domains that had to be fixed.
+        """
+        ...
+
 
 class ResolverControl(Protocol):
     def flush(self, domain_name: str | None = None) -> None:
