@@ -73,7 +73,7 @@ autonomy: continuous
   - [x] ไม่มี endpoint นอก §8.2 → `test_routes_match_spec_endpoints_exactly` (อ่านตาราง §8.2 จาก SPEC เทียบกับ OpenAPI ของ app = 22 คู่ method+path, ไม่มี /docs /redoc /openapi.json)
 
 ## P3 — DNS จริง (SPEC §6.5, §7)
-- [ ] P3-T01 `dns/projector.py`: DB state → snapshot (R-PUB-01..04) + tests 100% branch
+- [x] P3-T01 `dns/projector.py`: DB state → snapshot (R-PUB-01..04) + tests 100% branch — หลักฐาน: `src/plot/dns/projector.py` (`project`, `delegation_published`); `tests/unit/test_projector.py` มี `test_R_PUB_01_*`..`test_R_PUB_04_*` (idempotent, ไม่มี NS/hold ทุกค่า/expired → ไม่มี delegation, glue เฉพาะ host ย่อยที่ถูกใช้ รวมกรณีโดเมนอื่นใช้, TTL override); `make test` เพิ่ม gate `coverage report --include=*/plot/dns/projector.py --fail-under=100` (branch) → 100%; Assumption A-017; `make lint` ผ่าน; `make test` → 333 passed
 - [ ] P3-T02 `published_state` + `pending_changes` + `dns/scheduler.py` (R-PUB-05, 06, 09)
 - [ ] P3-T03 `dns/pdns_client.py` (REST ของ pdns: REPLACE/DELETE RRset) — ตรวจ path/zone-id กับ version ที่ pin
 - [ ] P3-T04 `dns/publisher.py` ผูก projector+scheduler+client เป็น `DnsPublisher`
@@ -176,6 +176,7 @@ autonomy: continuous
 | A-014 | `dns_visible` อ่านจาก `published_state.snapshot["nameservers"]` (snapshot `null`/ไม่มี key = ไม่มี delegation) และ `pending` = แถว `pending_changes` ที่ `applied_at` เป็น null เรียงตาม `(apply_at, id)` → projector ใน P3-T01 ต้องใช้ key `nameservers` ใน snapshot; request body เป็น strict + ห้าม field เกิน (`"2"` แทน `2` หรือ field แปลก → `VALIDATION_ERROR`); `GET /domains/check` ไม่ใส่ `reason` เมื่อว่าง | §2.6 | P3-T01 |
 | A-015 | `GET /domains/{name}/history` คืน event ของโดเมนและ host ย่อย (ชื่อใต้โดเมน) แม้โดเมนถูกลบ/purge แล้ว; ชื่อที่ไม่มีทั้ง event และโดเมน → `DOMAIN_NOT_FOUND` | §2.6 | — |
 | A-016 | Admin: (ก) "seed" = คอลัมน์ใหม่ `domains.seed` (migration 0002, ค่าเริ่มต้น false) ตั้งโดย `plot seed provider` (P3-T08); (ข) `POST /admin/reset` ต้องมี `prefix` ไม่ว่าง **หรือ** `all=true` อย่างใดอย่างหนึ่ง ไม่งั้น `VALIDATION_ERROR`; ลบโดเมนที่ไม่ใช่ seed ที่ตรงเงื่อนไขแบบบังคับ (เหมือน purge, event `domain.reset`) + external host ที่ไม่มีใครใช้และตรง prefix; ตอบ `{deleted_domains, deleted_hosts}` แล้ว flush resolver ทั้งหมด; (ค) `PUT /admin/settings` ส่งเฉพาะ field ที่จะเปลี่ยน, event `settings.update`; (ง) `POST /admin/resolver/flush` body ไม่บังคับ ตอบ `{flushed: name\|null}`; (จ) `POST /admin/publish/reconcile` เรียก `DnsPublisher.reconcile(session)` (เพิ่ม method ใน port) ตอบ `{fixed: [...]}` | §2.6 (§8.2 ไม่กำหนด response ของ admin) | P3-T06, P3-T08 |
+| A-017 | Snapshot ของโดเมน = `{nameservers: [...ตามลำดับ], ttl, glue: {host: {A: [...], AAAA: [...]}}}` หรือ `null`; glue ของ host ย่อยอยู่ใน snapshot ของ**โดเมนแม่** (ชื่ออยู่ใต้โดเมนแม่) และใช้ TTL ของโดเมนแม่; status ใดก็ตามใน 3 ค่าทำให้ไม่ publish (R-PUB-02) | §2.6 | — |
 
 ## Unverified (ต้องเคลียร์ก่อนจบ P8)
 | ID | เรื่อง | ทำไมยังไม่ตรวจ | วิธีตรวจ |

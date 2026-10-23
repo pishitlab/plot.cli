@@ -14,11 +14,13 @@ lint:
 	$(BIN)/ruff format --check src tests
 	$(BIN)/mypy
 
-# Coverage gate for core/ and services/ (SPEC §14: >= 90%).
-COV := --cov=plot.core --cov=plot.services --cov-branch --cov-report=term-missing:skip-covered --cov-fail-under=90
+# Coverage gates (SPEC §14): core/ + services/ >= 90%, dns/projector.py 100% of branches.
+COV := --cov=plot.core --cov=plot.services --cov=plot.dns.projector --cov-branch \
+	--cov-report=term-missing:skip-covered --cov-fail-under=90
 
 test:
 	$(BIN)/pytest -m "not integration" $(COV)
+	$(BIN)/coverage report --include='*/plot/dns/projector.py' --fail-under=100
 
 fmt:
 	$(BIN)/ruff format src tests
