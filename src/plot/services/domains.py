@@ -22,8 +22,9 @@ from plot.core.errors import (
 )
 from plot.core.names import normalize_name
 from plot.core.settings import MAX_TTL
-from plot.db.models import Domain, DomainStatus, Host, PendingChange, PublishedState
+from plot.db.models import Domain, DomainStatus, Event, Host, PendingChange, PublishedState
 from plot.services.context import ServiceContext
+from plot.services.events import domain_history
 from plot.services.hosts import (
     delete_unused_external_hosts,
     glue_owners,
@@ -238,6 +239,14 @@ class DomainService:
         page = domains[:limit]
         next_cursor = page[-1].name if len(domains) > limit else None
         return DomainPage([domain_view(self.ctx, d) for d in page], next_cursor)
+
+    def history(self, raw_name: str) -> list[Event]:
+        """Events of a domain and its hosts; also kept after the domain is deleted or purged."""
+        name = normalize_name(raw_name)
+        events = domain_history(self.session, name)
+        if not events and find_domain(self.ctx, name) is None:
+            raise DomainNotFound(name=name)
+        return events
 
     def renew(self, raw_name: str, years: int) -> DomainView:
         _check_years(years)

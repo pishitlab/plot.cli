@@ -111,3 +111,22 @@ def set_overrides(request: Request, name: str, body: schemas.OverridesRequest) -
             ns_ttl=body.ns_ttl if "ns_ttl" in given else UNSET,
         )
         return to_schema(ctx, view)
+
+
+@router.get("/{name}/history", response_model=schemas.EventList)
+def domain_history(request: Request, name: str) -> schemas.EventList:
+    with unit_of_work(request) as ctx:
+        events = DomainService(ctx).history(name)
+        return schemas.EventList(
+            items=[
+                schemas.Event(
+                    ts=e.ts,
+                    action=e.action,
+                    actor=e.actor,
+                    before=e.before,
+                    after=e.after,
+                    request_id=e.request_id,
+                )
+                for e in events
+            ]
+        )
