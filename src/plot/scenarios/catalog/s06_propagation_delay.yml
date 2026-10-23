@@ -1,0 +1,25 @@
+id: S06
+name: propagation delay
+description: With a 20 s delay the DB changes at once but DNS only after ~20 s (±3 s).
+domains: [a]
+steps:
+  - provider_zone: {domain: "${a}"}
+  - api: {method: POST, path: /domains, body: {name: "${a}", owner: scenario}}
+    expect: {status: 201}
+  - api: {method: PUT, path: "/domains/${a}/overrides", body: {propagation_delay: 20}}
+    expect: {status: 200}
+  - mark: nameservers set
+  - api:
+      method: PUT
+      path: /domains/${a}/nameservers
+      body: {nameservers: [ns1.myhost.net, ns2.myhost.net]}
+    expect: {status: 200, json: {nameservers: [ns1.myhost.net, ns2.myhost.net]}}
+  - title: right after the change DNS still has no delegation
+    verify: {domain: "${a}", expect: [ns1.myhost.net, ns2.myhost.net], status: NOT_DELEGATED}
+  - title: about 20 s later it is verified
+    verify:
+      domain: "${a}"
+      expect: [ns1.myhost.net, ns2.myhost.net]
+      status: VERIFIED
+      within: 30
+      elapsed: {min: 17, max: 23}

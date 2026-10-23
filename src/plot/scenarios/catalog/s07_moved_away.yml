@@ -1,0 +1,18 @@
+id: S07
+name: moved away after verification
+description: A verified domain is re-delegated elsewhere; re-verification must notice.
+domains: [a]
+steps:
+  - provider_zone: {domain: "${a}"}
+  - api:
+      method: POST
+      path: /domains
+      body: {name: "${a}", owner: scenario, nameservers: [ns1.myhost.net, ns2.myhost.net]}
+    expect: {status: 201}
+  - verify: {domain: "${a}", expect: [ns1.myhost.net, ns2.myhost.net], status: VERIFIED, within: 30}
+  - api:
+      method: PUT
+      path: /domains/${a}/nameservers
+      body: {nameservers: [ns1.other.net, ns2.other.net]}
+    expect: {status: 200}
+  - verify: {domain: "${a}", expect: [ns1.myhost.net, ns2.myhost.net], status: MISMATCH, within: 30}

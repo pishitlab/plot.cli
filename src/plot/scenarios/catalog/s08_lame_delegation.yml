@@ -1,0 +1,15 @@
+id: S08
+name: lame delegation
+description: The delegation is right but the nameservers' address has no server behind it.
+domains: [a]
+steps:
+  - api: {method: POST, path: /domains, body: {name: "${a}", owner: scenario}}
+    expect: {status: 201}
+  - api: {method: POST, path: /hosts, body: {name: "ns1.${a}", ipv4: ["${lame_ip}"]}}
+    expect: {status: 201}
+  - api: {method: POST, path: /hosts, body: {name: "ns2.${a}", ipv4: ["${lame_ip}"]}}
+    expect: {status: 201}
+  - api: {method: PUT, path: "/domains/${a}/nameservers", body: {nameservers: ["ns1.${a}", "ns2.${a}"]}}
+    expect: {status: 200}
+  - title: nobody answers for the domain
+    verify: {domain: "${a}", expect: ["ns1.${a}", "ns2.${a}"], status: LAME, within: 60}
