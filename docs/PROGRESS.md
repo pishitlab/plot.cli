@@ -15,11 +15,11 @@ autonomy: continuous
 | P3 | DNS จริง | 20% | 55% | ⚠️ gate ผ่านใน container ของ AI, รอผู้ใช้ยืนยันบน dev box |
 | P4 | CLI | 10% | 65% | ✅ เสร็จ |
 | P5 | สถานการณ์และตัวตรวจ | 13% | 78% | ✅ เสร็จ (รันใน container ของ AI) |
-| P6 | Web UI | 10% | 88% | 🟦 กำลังทำ |
+| P6 | Web UI | 10% | 88% | ✅ เสร็จ |
 | P7 | โมดูลเสริม | 6% | 94% | ⬜ |
 | P8 | ปิดงาน | 6% | 100% | ⬜ |
 
-ความคืบหน้ารวม: **78%** (P3 นับเมื่อ gate ผ่านในสภาพแวดล้อมของ AI; ผลบน dev box ยังรอผู้ใช้) (คำนวณจากน้ำหนัก phase × สัดส่วน task ที่ติ๊กแล้วใน phase นั้น; phase จะนับเต็มเมื่อ Exit Gate ผ่านและผู้ใช้อนุมัติ)
+ความคืบหน้ารวม: **88%** (P3 นับเมื่อ gate ผ่านในสภาพแวดล้อมของ AI; ผลบน dev box ยังรอผู้ใช้) (คำนวณจากน้ำหนัก phase × สัดส่วน task ที่ติ๊กแล้วใน phase นั้น; phase จะนับเต็มเมื่อ Exit Gate ผ่านและผู้ใช้อนุมัติ)
 
 สัญลักษณ์: ⬜ ยังไม่เริ่ม · 🟦 กำลังทำ · ✅ เสร็จ (มีหลักฐาน) · ⚠️ เสร็จแต่มี `NOT RUN` ค้าง
 
@@ -122,8 +122,11 @@ autonomy: continuous
 - [x] P6-T03 หน้า hosts — หลักฐาน: `/ui/hosts` (ตาราง kind/parent/addresses/used_by, ฟอร์มสร้าง, แก้ IP ของ host ย่อย, ลบ) ผ่าน `ApiClient`; `templates/hosts.html`; `tests/web/test_hosts_page.py` (happy + HOST_ADDR_REQUIRED/FORBIDDEN, INVALID_ADDRESS, HOST_IN_USE); `make lint` ผ่าน; `make test` → 530 passed
 - [x] P6-T04 หน้า settings — หลักฐาน: `/ui/settings` (ฟอร์ม runtime settings 5 ค่า → `PUT /admin/settings`, flush resolver ราย domain/ทั้งหมด, reset ตาม prefix หรือทั้งหมด); `templates/settings.html`; `tests/web/test_settings_page.py`; `make lint` ผ่าน; `make test` → 532 passed
 - [x] P6-T05 หน้า scenarios — หลักฐาน: `/ui/scenarios` (ตาราง catalog S01–S16, ปุ่ม Run รายตัว/Run all ผ่าน HTMX, แสดงผลราย step + cleanup) ใช้ `Engine` แบบเดียวกับ `plot scenario` (`engine_from_env(api)` ด้วย `ApiClient` ของผู้ login); `templates/scenarios.html`; `tests/web/test_scenarios_page.py` (4); `make lint` ผ่าน; `make test` → 536 passed
-- [ ] P6-T06 หน้า history + smoke tests ทุกหน้า
-- **Exit Gate P6:** [ ] ผ่านครบตาม SPEC §16 P6 · [ ] ผู้ใช้อนุมัติ
+- [x] P6-T06 หน้า history + smoke tests ทุกหน้า — หลักฐาน: `/ui/history?domain=` (event ใหม่สุดก่อน, แสดง field ที่เปลี่ยน before→after, request_id) + `views.event_row`; `tests/web/test_history_and_smoke.py`: ทุกหน้าโหลดได้ 200 (8 path), ทุกหน้าต้อง login, และตรวจว่า `plot.web` ไม่ import `services/db/dns/api/core` (ทุก action ผ่าน `ApiClient` ตัวเดียวกับ CLI); `make lint` ผ่าน; `make test` → 552 passed
+- **Exit Gate P6:** [x] ผ่านครบตาม SPEC §16 P6 · [x] ผู้ใช้อนุมัติ (autonomy `continuous`)
+  - [x] ทุกหน้าโหลดได้ (smoke test ผ่าน TestClient) → `test_every_page_loads` (8 path) + `test_every_page_needs_login`
+  - [x] การกระทำทุกอย่างใน UI เรียก API เดียวกับ CLI (ไม่มี logic ซ้ำ) → ทุก route ใน `web/app.py` เรียก `ApiClient` ของ CLI; `test_web_ui_has_no_business_logic_of_its_own` ตรวจ import; scenario ใช้ `engine_from_env` ตัวเดียวกับ `plot scenario`
+  - [x] screenshot ด้วย Chromium → ถ่ายจาก stack จริง (Playwright ของ Node ที่มีในเครื่อง + Chromium 1194) ที่ `docs/screenshots/`: [login](screenshots/p6-login.png), [domains](screenshots/p6-domains.png), [domain detail + countdown](screenshots/p6-domain-detail.png) (นับถอยหลังจริง 597s→595s ใน 2.5 วิ), [hosts](screenshots/p6-hosts.png), [settings](screenshots/p6-settings.png), [history](screenshots/p6-history.png), [scenarios หลังกด Run S01 → PASS](screenshots/p6-scenarios.png)
 
 ## P7 — โมดูลเสริม (ผู้ใช้เลือกเอง; ค่าเริ่มต้น = ไม่ทำ)
 เลือกโดยผู้ใช้: [ ] RDAP · [ ] WHOIS · [ ] transfer · [ ] virtual clock
@@ -232,3 +235,4 @@ _ยังไม่มี_
 | 2026-10-23 | P3-T01..T10 | DNS จริง: projector, scheduler, pdns client, publisher+worker, unbound control, reconcile, compose ครบ 5 service, seed provider, health, integration tests; ปิด U-001..U-004; Assumptions A-017..A-022 | `make test` → 382 passed; `make test-integration` → 24 passed ×2 |
 | 2026-10-23 | P4-T01..T06 | CLI `plot` ครบตาม §9 (domain, ns, host, override, admin, seed) ผ่าน API client + `--json` + exit code 0/1/2; Assumptions A-023, A-024 | `make test` → 432 passed |
 | 2026-10-23 | P5-T01..T09 | verifier (7 สถานะ), `plot verify`, scenario engine + S01–S16, `plot demo-ns add-zone`, `plot scenario`; พบ SPEC ขัดกัน S03/S12 → A-025 (รอผู้ใช้ทบทวน); Assumptions A-025..A-029 | `make test` → 514 passed; `make test-integration` → 26 passed; `plot scenario run --all` → 16/16 |
+| 2026-10-23 | P6-T01..T06 | Web UI `/ui` (Jinja2 + HTMX 2.0.11 แบบ vendored): login ด้วย API key, domains, รายละเอียด + countdown, hosts, settings, scenarios, history; screenshot 7 หน้าจาก stack จริง; Assumption A-030 | `make test` → 552 passed |

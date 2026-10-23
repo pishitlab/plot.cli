@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}History{% endblock %}
+{% block content %}
+<h1>History</h1>
+<form method="get" action="{{ root }}history" class="actions">
+  <label>Domain <input name="domain" value="{{ domain }}" placeholder="shop.com" required></label>
+  <button>Show</button>
+</form>
+<p></p>
+{% if domain and not error %}
+<table>
+  <thead><tr><th>Time (UTC)</th><th>Action</th><th>Actor</th><th>Changes</th><th>Request</th></tr></thead>
+  <tbody>
+  {% for e in events %}
+    <tr>
+      <td>{{ e.ts[:19] | replace("T", " ") }}</td>
+      <td>{{ e.action }}</td>
+      <td>{{ e.actor }}</td>
+      <td>
+        {% for key, old, new in e.changes %}
+          <div><code>{{ key }}</code>: <span class="muted">{{ old if old is not none else "-" }}</span> → {{ new if new is not none else "-" }}</div>
+        {% else %}-{% endfor %}
+      </td>
+      <td><code>{{ e.request_id }}</code></td>
+    </tr>
+  {% else %}
+    <tr><td colspan="5" class="muted">No events.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}

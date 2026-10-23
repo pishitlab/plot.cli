@@ -62,3 +62,10 @@ def override_body(delay: str, ttl: str) -> dict[str, Any]:
         if raw:
             body[key] = None if raw.lower() == "none" else as_int(raw)
     return body
+
+
+def event_row(event: dict[str, Any]) -> dict[str, Any]:
+    """An event with the fields that changed between ``before`` and ``after``."""
+    before, after = event.get("before") or {}, event.get("after") or {}
+    changed = sorted(k for k in set(before) | set(after) if before.get(k) != after.get(k))
+    return {**event, "changes": [(k, before.get(k), after.get(k)) for k in changed]}

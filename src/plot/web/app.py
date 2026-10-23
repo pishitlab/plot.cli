@@ -337,6 +337,25 @@ def create_web_app(
             notice="reset done",
         )
 
+    # --- history ------------------------------------------------------------------
+
+    @web.get("/history", response_class=HTMLResponse, name="history")
+    async def history(request: Request) -> Response:
+        name = (request.query_params.get("domain") or "").strip()
+        events: list[dict[str, Any]] = []
+        error = None
+        if name:
+            try:
+                events = (await fetch(request, lambda api: api.get(f"/domains/{name}/history")))[
+                    "items"
+                ]
+            except ApiError as err:
+                error = f"{err.code}: {err.message}"
+        else:
+            client(request)  # login required
+        rows = [views.event_row(e) for e in reversed(events)]
+        return page(request, "history.html", domain=name, events=rows, error=error)
+
     # --- scenarios ----------------------------------------------------------------
 
     @web.get("/scenarios", response_class=HTMLResponse, name="scenarios")
