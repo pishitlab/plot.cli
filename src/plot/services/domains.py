@@ -22,7 +22,7 @@ from plot.core.errors import (
 )
 from plot.core.names import normalize_name
 from plot.core.settings import MAX_TTL
-from plot.db.models import Domain, DomainStatus, Host
+from plot.db.models import Domain, DomainStatus, Host, PendingChange, PublishedState
 from plot.services.context import ServiceContext
 from plot.services.hosts import (
     delete_unused_external_hosts,
@@ -348,3 +348,32 @@ def _check_int(field: str, value: int | None, maximum: int | None) -> None:
         return
     if type(value) is not int or value < 0 or (maximum is not None and value > maximum):
         raise ValidationFailed(f"{field} must be a non-negative integer", field=field, value=value)
+
+
+@dataclass(frozen=True)
+class DnsVisible:
+    """What DNS shows for a domain (SPEC §8.3), which can lag behind the DB (D-007)."""
+
+    published_at: datetime | None
+    nameservers: list[str]
+    pending: list[datetime]
+
+
+def dns_visible(ctx: ServiceContext, name: str) -> DnsVisible:
+    """Read ``published_state`` and unapplied ``pending_changes``.
+
+    Snapshots are written by ``plot.dns``; the delegation lives under the key ``nameservers``
+    (empty or ``None`` snapshot = no delegation).
+    """
+    published = ctx.session.get(PublishedState, name)
+    snapshot = published.snapshot if published is not None else None
+    pending = ctx.session.scalars(
+        select(PendingChange.apply_at)
+        .where(PendingChange.domain_name == name, PendingChange.applied_at.is_(None))
+        .order_by(PendingChange.apply_at, PendingChange.id)
+    )
+    return DnsVisible(
+        published_at=published.published_at if published is not None else None,
+        nameservers=list((snapshot or {}).get("nameservers", [])),
+        pending=list(pending),
+    )
