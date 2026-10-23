@@ -17,5 +17,11 @@ if [ -f "$passthrough" ]; then
     done >> /etc/unbound/unbound.conf
 fi
 
+# Extra client networks outside RFC1918 (e.g. a VPN on 100.64.0.0/10), space separated.
+for cidr in ${RESOLVER_EXTRA_ALLOW:-}; do
+    printf '\nserver:\n    access-control: %s allow\n' "$cidr" >> /etc/unbound/unbound.conf
+done
+
 unbound-checkconf /etc/unbound/unbound.conf
+unbound -V | head -n 1
 exec unbound -d -c /etc/unbound/unbound.conf
