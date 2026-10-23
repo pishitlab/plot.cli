@@ -88,6 +88,7 @@ class PublishWorker:
         self.on_tick = on_tick
         self.backoff = Backoff()
         self.healthy = True
+        self.reconciled = False  # R-PUB-07: reconcile once before the first publish pass
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
 
@@ -98,6 +99,17 @@ class PublishWorker:
                 self.on_tick()
             except Exception:
                 log.exception("tick hook failed")
+        if not self.reconciled:
+            try:
+                with self.sessions.begin() as session:
+                    fixed = self.publisher.reconcile(session)
+            except Exception as err:
+                self.healthy = False
+                delay = self.backoff.failed()
+                log.warning("reconcile failed, retrying in %.0fs: %s", delay, err)
+                return delay
+            self.reconciled = True
+            log.info("reconciled registry zone, fixed: %s", fixed)
         with self.sessions.begin() as session:
             result = self.publisher.apply_due(session)
         if result.error is None:

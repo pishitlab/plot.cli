@@ -1,0 +1,95 @@
+# Domain Sandbox (SPEC §4.1, §4.3). Run from the repository root:
+#   docker compose --env-file .env --project-directory . -f deploy/docker-compose.yml up -d
+# Published ports bind to BIND_ADDR only (N10); pdns API (8081) and unbound-control (8953)
+# stay inside the compose network.
+name: plot
+
+x-pdns: &pdns
+  image: powerdns/pdns-auth-49:4.9.17
+  restart: unless-stopped
+  environment:
+    PDNS_AUTH_API_KEY: ${PDNS_API_KEY:?set PDNS_API_KEY in .env}
+
+services:
+  unbound:
+    build: ./deploy/unbound
+    image: plot-unbound:1.26.1
+    restart: unless-stopped
+    environment:
+      PDNS_ROOT_IP: ${PDNS_ROOT_IP:-172.28.0.10}
+      UPSTREAM_DNS: ${UPSTREAM_DNS:-1.1.1.1}
+      CACHE_MAX_TTL: ${CACHE_MAX_TTL:-3600}
+    volumes:
+      - ./config/passthrough.txt:/etc/unbound/passthrough.txt:ro
+    ports:
+      - "${BIND_ADDR:?set BIND_ADDR in .env}:53:53/udp"
+      - "${BIND_ADDR}:53:53/tcp"
+    networks:
+      sandbox:
+        ipv4_address: ${UNBOUND_IP:-172.28.0.2}
+    depends_on: [pdns-root]
+
+  pdns-root:
+    <<: *pdns
+    volumes:
+      - ./deploy/pdns-root/pdns.conf:/etc/powerdns/pdns.conf:ro
+      - pdns-root-data:/var/lib/powerdns
+    ports:
+      - "${BIND_ADDR}:5300:53/udp"
+      - "${BIND_ADDR}:5300:53/tcp"
+    networks:
+      sandbox:
+        ipv4_address: ${PDNS_ROOT_IP:-172.28.0.10}
+
+  registrar:
+    build:
+      context: .
+      dockerfile: deploy/registrar/Dockerfile
+    image: plot-registrar:dev
+    restart: unless-stopped
+    environment:
+      API_KEY: ${API_KEY:?set API_KEY in .env}
+      PDNS_API_KEY: ${PDNS_API_KEY}
+      PDNS_ROOT_IP: ${PDNS_ROOT_IP:-172.28.0.10}
+      SUBNET: ${SUBNET:-172.28.0.0/24}
+      UPSTREAM_DNS: ${UPSTREAM_DNS:-1.1.1.1}
+      PDNS_API_URL: http://pdns-root:8081
+      UNBOUND_CONTROL_HOST: unbound
+      DEMO_NS_API_URLS: http://demo-ns1:8081,http://demo-ns2:8081
+    volumes:
+      - ${DATA_DIR:-./data}:/data
+    ports:
+      - "${BIND_ADDR}:8080:8080"
+    networks:
+      sandbox:
+        ipv4_address: ${REGISTRAR_IP:-172.28.0.20}
+    depends_on: [pdns-root, unbound]
+
+  demo-ns1:
+    <<: *pdns
+    volumes:
+      - ./deploy/demo-ns/pdns.conf:/etc/powerdns/pdns.conf:ro
+      - demo-ns1-data:/var/lib/powerdns
+    networks:
+      sandbox:
+        ipv4_address: ${DEMO_NS1_IP:-172.28.0.31}
+
+  demo-ns2:
+    <<: *pdns
+    volumes:
+      - ./deploy/demo-ns/pdns.conf:/etc/powerdns/pdns.conf:ro
+      - demo-ns2-data:/var/lib/powerdns
+    networks:
+      sandbox:
+        ipv4_address: ${DEMO_NS2_IP:-172.28.0.32}
+
+networks:
+  sandbox:
+    ipam:
+      config:
+        - subnet: ${SUBNET:-172.28.0.0/24}
+
+volumes:
+  pdns-root-data:
+  demo-ns1-data:
+  demo-ns2-data:

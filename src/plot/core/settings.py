@@ -23,6 +23,11 @@ class EnvConfig(BaseSettings):
     upstream_dns: IPvAnyAddress = IPv4Address("1.1.1.1")
     cache_max_ttl: int = Field(default=3600, ge=0, le=MAX_TTL)
     data_dir: Path = Path("./data")
+    # Internal endpoints inside the compose network (not in SPEC §13.1; defaults fit deploy/).
+    pdns_api_url: str = "http://pdns-root:8081"
+    unbound_control_host: str = "unbound"
+    unbound_control_port: int = 8953
+    config_dir: Path = Path("./config")
 
 
 class RuntimeSettings(BaseModel):

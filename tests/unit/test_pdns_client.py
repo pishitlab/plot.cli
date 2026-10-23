@@ -74,8 +74,10 @@ class FakePdns:
             if not self.zone_exists:
                 return httpx.Response(404, json={"error": "Not Found"})
             return httpx.Response(200, json={"rrsets": [ROOT_NS_RRSET]})
-        if request.method == "GET":
+        if request.method == "GET" and request.url.path == "/api/v1/servers/localhost":
             return httpx.Response(200, json={"id": "localhost"})
+        if request.method == "GET":
+            return httpx.Response(404, json={"error": "Not Found"})
         return httpx.Response(201 if request.method == "POST" else 204)
 
 

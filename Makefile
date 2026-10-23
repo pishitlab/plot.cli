@@ -2,7 +2,7 @@ PYTHON ?= python3.12
 VENV   := .venv
 BIN    := $(VENV)/bin
 
-.PHONY: install lint test fmt
+.PHONY: install lint test fmt up down test-integration
 
 install:
 	$(PYTHON) -m venv $(VENV)
@@ -26,3 +26,17 @@ fmt:
 	$(BIN)/ruff format src tests
 	$(BIN)/ruff check --fix src tests
 	$(BIN)/ruff format src tests
+
+# Docker Compose stack (SPEC §4.1). ENV_FILE holds BIND_ADDR, API_KEY, PDNS_API_KEY, ...
+ENV_FILE ?= .env
+COMPOSE := docker compose --env-file $(ENV_FILE) --project-directory . -f deploy/docker-compose.yml
+
+up:
+	$(COMPOSE) up -d --build
+
+down:
+	$(COMPOSE) down
+
+# Needs the stack from `make up`; talks to it through BIND_ADDR from ENV_FILE.
+test-integration:
+	PLOT_ENV_FILE=$(ENV_FILE) $(BIN)/pytest -m integration tests/integration -v

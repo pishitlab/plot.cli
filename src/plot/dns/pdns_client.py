@@ -105,8 +105,9 @@ class PdnsClient:
         timeout: float = 5.0,
         transport: httpx.BaseTransport | None = None,
     ) -> None:
+        self._server_url = f"{base_url.rstrip('/')}/api/v1/servers/{server_id}"
         self._http = httpx.Client(
-            base_url=f"{base_url.rstrip('/')}/api/v1/servers/{server_id}",
+            base_url=self._server_url,
             headers={"X-API-Key": api_key},
             timeout=timeout,
             transport=transport,
@@ -117,7 +118,8 @@ class PdnsClient:
 
     def ping(self) -> bool:
         try:
-            return self._http.get("").status_code == 200
+            # the server resource has no trailing slash (".../localhost/" is a 404)
+            return self._http.get(self._server_url).status_code == 200
         except httpx.HTTPError:
             return False
 
