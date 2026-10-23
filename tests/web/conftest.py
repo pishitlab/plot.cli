@@ -15,7 +15,8 @@ from tests.api.conftest import API_KEY, sessions, state  # noqa: F401  (fixtures
 @pytest.fixture
 def app_client(state: AppState) -> Iterator[TestClient]:  # noqa: F811
     app = create_app(state)
-    mount_web_ui(app, lambda key: ApiClient(TestClient(app, headers={"X-API-Key": key})))
+    shared = TestClient(app)  # one pooled client for all UI requests, as in production
+    mount_web_ui(app, lambda key: ApiClient(shared, key))
     with TestClient(app) as client:
         yield client
 

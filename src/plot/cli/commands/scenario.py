@@ -5,6 +5,7 @@ registrar container all of them are configured: ``docker compose exec registrar 
 scenario run --all``.
 """
 
+import functools
 import json
 import os
 from collections.abc import Callable
@@ -31,17 +32,22 @@ ENV_VARIABLES = {
 }
 
 
-def engine_from_env(api: ApiClient | None = None) -> Engine:
-    probe = LiveDns.from_env()
+@functools.cache
+def zones_from_env() -> DemoNs | None:
+    """The demo-ns API clients, created once per process."""
     urls = [u.strip() for u in os.environ.get("DEMO_NS_API_URLS", "").split(",") if u.strip()]
     key = os.environ.get("PDNS_API_KEY", "")
-    zones = DemoNs(urls, key) if urls and key else None
+    return DemoNs(urls, key) if urls and key else None
+
+
+def engine_from_env(api: ApiClient | None = None) -> Engine:
+    """Engine for ``api`` (the Web UI passes the logged-in user's client), else the CLI's."""
+    probe = LiveDns.from_env()
     variables = {
         name: os.environ.get(env, DEFAULT_VARIABLES[name]) for name, env in ENV_VARIABLES.items()
     }
-    return Engine(
-        output.client_factory(), probe, LiveScenarioDns(probe), zones, variables=variables
-    )
+    client = api if api is not None else output.client_factory()
+    return Engine(client, probe, LiveScenarioDns(probe), zones_from_env(), variables=variables)
 
 
 # Replaced in tests.

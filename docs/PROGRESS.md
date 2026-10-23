@@ -167,6 +167,8 @@ autonomy: continuous
 - [x] F6 SQLite WAL + busy_timeout 10 วิ + synchronous=NORMAL — หลักฐาน: `test_file_database_uses_wal_and_busy_timeout`, `test_concurrent_writers_wait_instead_of_failing` (3 thread × 20 transaction ไม่มี `database is locked`)
 - [x] F3 publish แยกความล้มเหลวรายโดเมน (โดเมนที่ pdns ปฏิเสธค้าง pending เอง โดเมนอื่น apply ต่อ) — หลักฐาน: `test_R_PUB_09_failure_keeps_change_pending_without_blocking_others`, `test_R_PUB_09_order_within_a_failing_domain_is_kept` (แก้ test เดิมที่ assert ว่าทั้ง batch หยุด เพราะพฤติกรรมนั้นคือข้อบกพร่อง F3 ที่ผู้ใช้อนุมัติให้แก้; R-PUB-09 ยังครบ: change ค้าง pending + retry)
 - [x] F4 publish ล้ม → รอบถัดไป reconcile ก่อน (สร้าง zone `.` คืนถ้า pdns เสียข้อมูล) — หลักฐาน: `test_worker_reconciles_again_after_a_publish_failure`
+- [x] F5 Web UI ใช้ HTTP client ตัวเดียว (pool) แล้วส่ง key ราย request แทนการสร้าง client ใหม่ทุก request — หลักฐาน: `ApiClient(http, api_key)`, `test_per_request_key_lets_one_client_serve_many_keys`, web tests ใช้ client ร่วมเหมือน production
+- [x] F13 `DemoNs` ของ scenario สร้างครั้งเดียวต่อ process (`zones_from_env` cache) + **บั๊กที่เจอระหว่างแก้**: `engine_from_env(api)` ไม่ใช้ `api` ที่ส่งมา (UI รัน scenario ด้วย key จาก env แทน key ของผู้ login) — แก้แล้ว, `test_engine_uses_the_client_it_is_given`
 
 ## Environment (กรอกใน P0-T02)
 ตรวจเมื่อ 2026-10-22 ใน cloud container ของ AI (ไม่ใช่ `192.168.1.175`)

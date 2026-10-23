@@ -118,11 +118,9 @@ def create() -> FastAPI:
 
     app = create_app(state)
     app.router.lifespan_context = lifespan
-    api_url = os.environ.get("PLOT_API_URL", "http://localhost:8080")
-    mount_web_ui(
-        app,
-        lambda key: ApiClient(
-            httpx.Client(base_url=api_url, headers={"X-API-Key": key}, timeout=60)
-        ),
+    # One pooled client for every UI request; each request carries the user's own key.
+    ui_http = httpx.Client(
+        base_url=os.environ.get("PLOT_API_URL", "http://localhost:8080"), timeout=60
     )
+    mount_web_ui(app, lambda key: ApiClient(ui_http, key))
     return app

@@ -20,8 +20,12 @@ class ApiError(Exception):
 
 
 class ApiClient:
-    def __init__(self, http: httpx.Client) -> None:
+    """``api_key`` is sent with each request, so one pooled ``http`` client can serve many
+    keys (the Web UI); the CLI puts the key in the client's default headers instead."""
+
+    def __init__(self, http: httpx.Client, api_key: str | None = None) -> None:
         self.http = http
+        self.api_key = api_key
 
     @classmethod
     def from_env(cls) -> "ApiClient":
@@ -39,7 +43,10 @@ class ApiClient:
     ) -> tuple[int, Any]:
         """Raw call: (HTTP status, parsed body or None). Raises only when unreachable."""
         try:
-            response = self.http.request(method, API_PREFIX + path, json=json, params=params)
+            headers = {"X-API-Key": self.api_key} if self.api_key is not None else None
+            response = self.http.request(
+                method, API_PREFIX + path, json=json, params=params, headers=headers
+            )
         except httpx.HTTPError as err:
             raise ApiError("CONNECTION_ERROR", f"cannot reach the registrar API: {err}") from err
         try:

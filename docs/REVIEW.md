@@ -22,7 +22,7 @@
 | F10 | กลาง | ไม่มี healthcheck ใน compose → `docker compose ps` บอก running แม้แอปพัง และ deploy รอ "พร้อมจริง" ไม่ได้ | `healthcheck` = 0 | healthcheck ให้ registrar, unbound, pdns ทุกตัว |
 | F11 | กลาง | Reproducibility: image อ้างด้วย tag (tag ถูกเขียนทับได้), image unbound ติด tag `1.26.1` แต่ apt ไม่ได้ pin | compose/Dockerfile | pin base image ด้วย digest; ตั้งชื่อ image unbound ตาม base แทนเลขเวอร์ชันที่อาจไม่จริง; entrypoint log เวอร์ชันจริง |
 | F12 | กลาง | `make install` ไม่ใช้ lock → dev/CI ทดสอบกับเวอร์ชันที่ต่างจาก image ได้ | `pip install -e '.[dev]'` | ติดตั้งด้วย `-c deploy/registrar/requirements.lock` |
-| F13 | กลาง | ทุกครั้งที่รัน scenario (CLI/UI) สร้าง `DemoNs` (httpx client 2 ตัว) ใหม่และไม่ปิด | `engine_from_env` | สร้างครั้งเดียวต่อ process |
+| F13 | กลาง | ทุกครั้งที่รัน scenario (CLI/UI) สร้าง `DemoNs` (httpx client 2 ตัว) ใหม่และไม่ปิด; **ระหว่างแก้พบเพิ่ม**: `engine_from_env(api)` ไม่ใช้ `api` ที่ส่งมา → UI รัน scenario ด้วย key จาก env ไม่ใช่ key ของผู้ login | `engine_from_env` | สร้างครั้งเดียวต่อ process; ใช้ client ที่ส่งมา |
 | F14 | ต่ำ | Web UI เก็บ API key ใน cookie และส่งผ่าน HTTP ธรรมดา (ไม่มี TLS) | ออกแบบตาม D-008 | ระบุชัดใน README/RUNBOOK ว่าเป็นข้อจำกัดของ dev LAN |
 | F15 | ต่ำ | ถ้ามีคนเพิ่ม `--workers` ให้ uvicorn จะมี publisher หลายตัวแย่งกัน | ไม่มีคำเตือน | ระบุใน Dockerfile/RUNBOOK ว่าต้อง 1 worker |
 | F16 | ต่ำ | Client ที่ไม่ได้อยู่ใน RFC1918 (เช่น VPN/Tailscale 100.64.0.0/10) ถูก unbound ปฏิเสธเงียบ ๆ | `access-control` ตายตัว | env `RESOLVER_EXTRA_ALLOW` (CIDR คั่นด้วยช่องว่าง) + เอกสาร |

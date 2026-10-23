@@ -1,7 +1,9 @@
 import json
 
+import httpx
 import pytest
 
+from plot.cli.client import ApiClient
 from plot.cli.commands import scenario as scenario_cmd
 from plot.scenarios.engine import Engine, ScenarioResult, StepResult
 from tests.cli.conftest import Plot
@@ -87,8 +89,18 @@ def test_engine_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DEMO_NS_API_URLS", "http://demo-ns1:8081")
     monkeypatch.setenv("PDNS_API_KEY", "k")
     monkeypatch.setenv("PLOT_LAME_IP", "10.9.9.9")
+    scenario_cmd.zones_from_env.cache_clear()
     engine = scenario_cmd.engine_from_env()
     assert engine.zones is not None
     assert engine.variables["lame_ip"] == "10.9.9.9"
+    assert scenario_cmd.engine_from_env().zones is engine.zones  # created once per process
     monkeypatch.delenv("PDNS_API_KEY")
+    scenario_cmd.zones_from_env.cache_clear()
     assert scenario_cmd.engine_from_env().zones is None
+    scenario_cmd.zones_from_env.cache_clear()
+
+
+def test_engine_uses_the_client_it_is_given() -> None:
+    """The Web UI runs scenarios with the logged-in user's API client, not the CLI env."""
+    mine = ApiClient(httpx.Client(base_url="http://registrar"), "user-key")
+    assert scenario_cmd.engine_from_env(mine).api is mine

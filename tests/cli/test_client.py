@@ -99,3 +99,17 @@ def test_call_returns_status_and_body() -> None:
     client = mock(handler)
     assert client.call("POST", "/domains", json={}) == (201, {"ok": True})
     assert client.call("DELETE", "/domains/x.com") == (204, None)
+
+
+def test_per_request_key_lets_one_client_serve_many_keys() -> None:
+    seen: list[str | None] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request.headers.get("X-API-Key"))
+        return httpx.Response(200, json={})
+
+    http = httpx.Client(base_url="http://registrar", transport=httpx.MockTransport(handler))
+    ApiClient(http, "alice").get("/domains")
+    ApiClient(http, "bob").get("/domains")
+    ApiClient(http).get("/domains")
+    assert seen == ["alice", "bob", None]
