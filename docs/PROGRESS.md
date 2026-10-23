@@ -16,10 +16,10 @@ autonomy: continuous
 | P4 | CLI | 10% | 65% | ✅ เสร็จ |
 | P5 | สถานการณ์และตัวตรวจ | 13% | 78% | ✅ เสร็จ (รันใน container ของ AI) |
 | P6 | Web UI | 10% | 88% | ✅ เสร็จ |
-| P7 | โมดูลเสริม | 6% | 94% | ⬜ |
-| P8 | ปิดงาน | 6% | 100% | ⬜ |
+| P7 | โมดูลเสริม | 6% | 94% | ✅ ไม่มีโมดูลที่เลือก (ค่าเริ่มต้น) |
+| P8 | ปิดงาน | 6% | 100% | 🟦 กำลังทำ |
 
-ความคืบหน้ารวม: **88%** (P3 นับเมื่อ gate ผ่านในสภาพแวดล้อมของ AI; ผลบน dev box ยังรอผู้ใช้) (คำนวณจากน้ำหนัก phase × สัดส่วน task ที่ติ๊กแล้วใน phase นั้น; phase จะนับเต็มเมื่อ Exit Gate ผ่านและผู้ใช้อนุมัติ)
+ความคืบหน้ารวม: **94%** (P3 นับเมื่อ gate ผ่านในสภาพแวดล้อมของ AI; ผลบน dev box ยังรอผู้ใช้) (คำนวณจากน้ำหนัก phase × สัดส่วน task ที่ติ๊กแล้วใน phase นั้น; phase จะนับเต็มเมื่อ Exit Gate ผ่านและผู้ใช้อนุมัติ)
 
 สัญลักษณ์: ⬜ ยังไม่เริ่ม · 🟦 กำลังทำ · ✅ เสร็จ (มีหลักฐาน) · ⚠️ เสร็จแต่มี `NOT RUN` ค้าง
 
@@ -129,12 +129,14 @@ autonomy: continuous
   - [x] screenshot ด้วย Chromium → ถ่ายจาก stack จริง (Playwright ของ Node ที่มีในเครื่อง + Chromium 1194) ที่ `docs/screenshots/`: [login](screenshots/p6-login.png), [domains](screenshots/p6-domains.png), [domain detail + countdown](screenshots/p6-domain-detail.png) (นับถอยหลังจริง 597s→595s ใน 2.5 วิ), [hosts](screenshots/p6-hosts.png), [settings](screenshots/p6-settings.png), [history](screenshots/p6-history.png), [scenarios หลังกด Run S01 → PASS](screenshots/p6-scenarios.png)
 
 ## P7 — โมดูลเสริม (ผู้ใช้เลือกเอง; ค่าเริ่มต้น = ไม่ทำ)
-เลือกโดยผู้ใช้: [ ] RDAP · [ ] WHOIS · [ ] transfer · [ ] virtual clock
+เลือกโดยผู้ใช้: [ ] RDAP · [ ] WHOIS · [ ] transfer · [ ] virtual clock — **ยังไม่มีการเลือก → ใช้ค่าเริ่มต้น "ไม่ทำ"** (2026-10-23; ผู้ใช้สั่งให้ทำต่ออัตโนมัติ ไม่ได้เลือกโมดูล) ถ้าต้องการโมดูลใดให้บอก แล้วจะทำ task ที่ตรงกันและเปิด P7 ใหม่
 - [ ] P7-T01 RDAP `/rdap/domain/{name}`
 - [ ] P7-T02 WHOIS TCP :43
 - [ ] P7-T03 transfer ด้วย auth code
 - [ ] P7-T04 virtual clock สำหรับ registrar
-- **Exit Gate P7:** [ ] เฉพาะโมดูลที่เลือกผ่านตาม SPEC §16 P7 · [ ] ผู้ใช้อนุมัติ
+- **Exit Gate P7:** [x] เฉพาะโมดูลที่เลือกผ่านตาม SPEC §16 P7 (ไม่มีโมดูลที่เลือก) · [x] ผู้ใช้อนุมัติ (autonomy `continuous`)
+  - [x] โมดูลที่ไม่เลือกต้องไม่มีโค้ดค้าง → `grep -rniE "rdap|whois|transfer|virtual.?clock" src/ tests/` พบแค่กฎ layering ใน `test_governance.py` (ห้าม services import `plot.whois` ตาม §4.4); ไม่มี `src/plot/whois/`; คอลัมน์ `auth_code` เป็นของโมเดลข้อมูล §5 ไม่ใช่โค้ดของโมดูล transfer
+  - P7-T01..T04: ไม่ทำ (ไม่ได้ถูกเลือก) — ไม่ติ๊ก
 
 ## P8 — ปิดงาน (SPEC §15, §17, §18)
 - [ ] P8-T01 `README.md` ฉบับเต็ม
