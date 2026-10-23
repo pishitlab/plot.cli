@@ -139,7 +139,7 @@ autonomy: continuous
   - P7-T01..T04: ไม่ทำ (ไม่ได้ถูกเลือก) — ไม่ติ๊ก
 
 ## P8 — ปิดงาน (SPEC §15, §17, §18)
-- [ ] P8-T01 `README.md` ฉบับเต็ม
+- [x] P8-T01 `README.md` ฉบับเต็ม — หลักฐาน: `README.md` ฉบับเต็ม: วัตถุประสงค์ + คำเตือน dev LAN only (§15), ลิงก์ SPEC/RUNBOOK/PROGRESS, แผนผังส่วนประกอบ, ติดตั้งแบบสรุป, การใช้ CLI (env, exit code, คำสั่งที่ต้องรันใน container), Web UI, verifier, scenario, ตาราง config (รวม env ที่เพิ่มตาม A-020), การทดสอบ; `.env.example` เพิ่ม `LAME_IP` (optional); `make lint` ผ่าน (ไฟล์เอกสาร ไม่มีผลต่อ test)
 - [ ] P8-T02 `docs/RUNBOOK.md` (ติดตั้ง .175, DNS client, systemd-resolved, troubleshooting, backup)
 - [ ] P8-T03 ปรับ log JSON + health + `make smoke`
 - [ ] P8-T04 ผู้ใช้รัน Acceptance checklist §18
