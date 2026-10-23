@@ -6,7 +6,7 @@ A scenario file holds ``id``, ``name``, ``description``, ``domains`` (placeholde
 - ``api: {method, path, body}`` with ``expect: {status, code, json}``
 - ``verify: {domain, expect: [ns...], status, within, elapsed: {min, max}}``
 - ``dns: {server: resolver|registry, name, type, rcode, answers, glue, within}``
-- ``provider_zone: {domain, on: [demo-ns1, ...], nameservers, records: {label: ip}}``
+- ``provider_zone: {domain, servers: [demo-ns1, ...], nameservers, records: {label: ip}}``
 - ``mark: <label>`` starts the clock that ``elapsed`` is measured from
 
 ``${a}`` expands to the scenario's random ``scn-`` domain for placeholder ``a``;
@@ -83,7 +83,7 @@ class DnsCall(_Model):
 
 class ZoneCall(_Model):
     domain: str
-    on: list[str] | None = None
+    servers: list[str] | None = None  # demo-ns instances; not "on", which YAML reads as true
     nameservers: list[str] = ["ns1.myhost.net", "ns2.myhost.net"]
     records: dict[str, str] = {}
 
@@ -327,9 +327,9 @@ class Engine:
             f"{label}.{call.domain}" if label != "@" else call.domain: ip
             for label, ip in call.records.items()
         }
-        self.zones.ensure_zone(call.domain, call.nameservers, records, call.on)
+        self.zones.ensure_zone(call.domain, call.nameservers, records, call.servers)
         state.zones.add(call.domain)
-        return f"zone {call.domain} on {', '.join(call.on or ['all demo-ns'])}"
+        return f"zone {call.domain} on {', '.join(call.servers or ['all demo-ns'])}"
 
     # helpers ----------------------------------------------------------------------
 

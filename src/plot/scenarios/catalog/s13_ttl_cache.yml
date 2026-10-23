@@ -14,12 +14,12 @@ steps:
   - title: provider A on demo-ns1 and provider B on demo-ns2 serve different addresses
     provider_zone:
       domain: "${a}"
-      on: [demo-ns1]
+      servers: [demo-ns1]
       nameservers: ["nsa1.${a}", "nsa2.${a}"]
       records: {www: 10.0.13.1, nsa1: "${demo_ns1_ip}", nsa2: "${demo_ns1_ip}"}
   - provider_zone:
       domain: "${a}"
-      on: [demo-ns2]
+      servers: [demo-ns2]
       nameservers: ["nsb1.${a}", "nsb2.${a}"]
       records: {www: 10.0.13.2, nsb1: "${demo_ns2_ip}", nsb2: "${demo_ns2_ip}"}
   - api: {method: POST, path: /hosts, body: {name: "nsa1.${a}", ipv4: ["${demo_ns1_ip}"]}}
