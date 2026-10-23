@@ -6,6 +6,7 @@ from plot.services.context import ServiceContext
 from plot.services.domains import (
     DEFAULT_LIST_LIMIT,
     MAX_LIST_LIMIT,
+    UNSET,
     DomainService,
     DomainView,
     dns_visible,
@@ -83,3 +84,30 @@ def delete_domain(request: Request, name: str) -> Response:
 def renew_domain(request: Request, name: str, body: schemas.RenewRequest) -> schemas.Domain:
     with unit_of_work(request) as ctx:
         return to_schema(ctx, DomainService(ctx).renew(name, body.years))
+
+
+@router.put("/{name}/nameservers", response_model=schemas.Domain)
+def set_nameservers(
+    request: Request, name: str, body: schemas.NameserversRequest
+) -> schemas.Domain:
+    with unit_of_work(request) as ctx:
+        return to_schema(ctx, DomainService(ctx).set_nameservers(name, body.nameservers))
+
+
+@router.put("/{name}/status", response_model=schemas.Domain)
+def update_status(request: Request, name: str, body: schemas.StatusRequest) -> schemas.Domain:
+    with unit_of_work(request) as ctx:
+        view = DomainService(ctx).update_status(name, add=body.add, remove=body.remove)
+        return to_schema(ctx, view)
+
+
+@router.put("/{name}/overrides", response_model=schemas.Domain)
+def set_overrides(request: Request, name: str, body: schemas.OverridesRequest) -> schemas.Domain:
+    given = body.model_fields_set
+    with unit_of_work(request) as ctx:
+        view = DomainService(ctx).set_overrides(
+            name,
+            propagation_delay=body.propagation_delay if "propagation_delay" in given else UNSET,
+            ns_ttl=body.ns_ttl if "ns_ttl" in given else UNSET,
+        )
+        return to_schema(ctx, view)
