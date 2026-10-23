@@ -10,4 +10,5 @@ RUN pip install --no-cache-dir --no-deps .
 COPY config ./config
 ENV DATA_DIR=/data CONFIG_DIR=/app/config
 EXPOSE 8080
-CMD ["uvicorn", "--factory", "plot.api.main:create", "--host", "0.0.0.0", "--port", "8080"]
+# uvicorn's text access log is off: the app writes JSON access lines with the request id
+CMD ["uvicorn", "--factory", "plot.api.main:create", "--host", "0.0.0.0", "--port", "8080", "--no-access-log"]

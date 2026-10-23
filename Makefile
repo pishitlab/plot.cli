@@ -2,7 +2,7 @@ PYTHON ?= python3.12
 VENV   := .venv
 BIN    := $(VENV)/bin
 
-.PHONY: install lint test fmt up down test-integration
+.PHONY: install lint test fmt up down test-integration smoke
 
 install:
 	$(PYTHON) -m venv $(VENV)
@@ -41,3 +41,7 @@ down:
 # scenario catalog inside the registrar container.
 test-integration:
 	PLOT_ENV_FILE=$(ENV_FILE) $(BIN)/pytest -m integration tests/integration tests/scenarios -v
+
+# Quick outside-in check of the running stack (health, NXDOMAIN, passthrough, registry, seed).
+smoke:
+	$(BIN)/python -m plot.smoke $(ENV_FILE)

@@ -2,6 +2,7 @@
 
 import logging
 import re
+import time
 import uuid
 from typing import Any
 
@@ -10,12 +11,14 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import RequestResponseEndpoint
 
+from plot.api.logging import request_id_var
 from plot.core.errors import InternalError, PlotError, ValidationFailed
 
 REQUEST_ID_HEADER = "X-Request-ID"
 _CLIENT_REQUEST_ID = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
 
 log = logging.getLogger("plot.api")
+access_log = logging.getLogger("plot.access")
 
 
 def envelope(
@@ -55,10 +58,29 @@ def install_error_handlers(app: FastAPI) -> None:
         supplied = request.headers.get(REQUEST_ID_HEADER, "")
         rid = supplied if _CLIENT_REQUEST_ID.match(supplied) else uuid.uuid4().hex
         request.state.request_id = rid
+        token = request_id_var.set(rid)
+        started = time.perf_counter()
         try:
-            response = await call_next(request)
-        except Exception:
-            log.exception("unhandled error", extra={"request_id": rid})
-            return error_response(request, InternalError())
-        response.headers[REQUEST_ID_HEADER] = rid
-        return response
+            try:
+                response = await call_next(request)
+            except Exception:
+                log.exception("unhandled error", extra={"request_id": rid})
+                response = error_response(request, InternalError())
+            response.headers[REQUEST_ID_HEADER] = rid
+            # access log: never headers or bodies, so the API key cannot leak (SPEC §15)
+            access_log.info(
+                "%s %s %s",
+                request.method,
+                request.url.path,
+                response.status_code,
+                extra={
+                    "request_id": rid,
+                    "method": request.method,
+                    "path": request.url.path,
+                    "status": response.status_code,
+                    "duration_ms": round((time.perf_counter() - started) * 1000, 1),
+                },
+            )
+            return response
+        finally:
+            request_id_var.reset(token)

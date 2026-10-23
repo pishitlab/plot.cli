@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from plot.api.app import create_app
 from plot.api.deps import AppState
+from plot.api.logging import configure_json_logging
 from plot.cli.client import ApiClient
 from plot.core.clock import Clock, SystemClock
 from plot.core.settings import EnvConfig, RuntimeSettings, load_env_config, load_runtime_defaults
@@ -106,8 +107,7 @@ def build(config: EnvConfig) -> tuple[AppState, PublishWorker]:
 
 
 def create() -> FastAPI:
-    logging.basicConfig(level=logging.INFO)
-    logging.getLogger("httpx").setLevel(logging.WARNING)
+    configure_json_logging()
     state, worker = build(load_env_config())
 
     @asynccontextmanager
