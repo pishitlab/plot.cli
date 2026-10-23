@@ -75,7 +75,7 @@ autonomy: continuous
 ## P3 — DNS จริง (SPEC §6.5, §7)
 - [x] P3-T01 `dns/projector.py`: DB state → snapshot (R-PUB-01..04) + tests 100% branch — หลักฐาน: `src/plot/dns/projector.py` (`project`, `delegation_published`); `tests/unit/test_projector.py` มี `test_R_PUB_01_*`..`test_R_PUB_04_*` (idempotent, ไม่มี NS/hold ทุกค่า/expired → ไม่มี delegation, glue เฉพาะ host ย่อยที่ถูกใช้ รวมกรณีโดเมนอื่นใช้, TTL override); `make test` เพิ่ม gate `coverage report --include=*/plot/dns/projector.py --fail-under=100` (branch) → 100%; Assumption A-017; `make lint` ผ่าน; `make test` → 332 passed
 - [x] P3-T02 `published_state` + `pending_changes` + `dns/scheduler.py` (R-PUB-05, 06, 09) — หลักฐาน: `src/plot/dns/scheduler.py` (`propagation_delay`, `schedule_change`, `due_changes`, `mark_applied` เขียน `published_state` + supersede, `apply_due`, `Backoff`); ตาราง `published_state`/`pending_changes` มีจาก migration 0001; `tests/unit/test_scheduler.py` มี `test_R_PUB_05_*`, `test_R_PUB_06_*` (ลำดับ `(apply_at,id)`, change ใหม่ทับเก่าแม้ของเก่าถึงเวลาทีหลัง, ไม่ apply ซ้ำ), `test_R_PUB_09_*` (ล้มแล้วคง pending + ลำดับ, backoff 1,2,4,8,16,30); Assumption A-018; `make lint` ผ่าน; `make test` → 340 passed
-- [ ] P3-T03 `dns/pdns_client.py` (REST ของ pdns: REPLACE/DELETE RRset) — ตรวจ path/zone-id กับ version ที่ pin
+- [x] P3-T03 `dns/pdns_client.py` (REST ของ pdns: REPLACE/DELETE RRset) — ตรวจ path/zone-id กับ version ที่ pin — หลักฐาน: `src/plot/dns/pdns_client.py` (`PdnsClient.ensure_root_zone/apply/patch/zone_rrsets/ping`, `rrset_changes` แปลง snapshot เก่า→ใหม่เป็น REPLACE/DELETE); ตรวจ path/zone-id/soa-edit-api กับ `powerdns/pdns-auth-49:4.9.17` ที่รันจริง → ปิด U-001, U-002 (ดูตาราง Unverified + Pinned versions); `tests/unit/test_pdns_client.py` (MockTransport); ลองเรียก client จริงกับ container แล้ว (สร้าง/เขียน root zone, REPLACE NS+glue, DELETE); `make lint` ผ่าน; `make test` → 348 passed
 - [ ] P3-T04 `dns/publisher.py` ผูก projector+scheduler+client เป็น `DnsPublisher`
 - [ ] P3-T05 `dns/unbound_ctl.py` (flush ผ่าน unbound-control) และ R-PUB-08
 - [ ] P3-T06 `dns/reconcile.py` (R-PUB-07)
@@ -154,7 +154,7 @@ autonomy: continuous
 | ส่วน | image/เวอร์ชัน | ตรวจเอกสาร/ทดสอบแล้ว |
 |---|---|---|
 | unbound | _—_ | _—_ |
-| pdns-auth | _—_ | _—_ |
+| pdns-auth | `powerdns/pdns-auth-49:4.9.17` (image ทางการ, release 2026-08-05; ไม่ใช้ 4.9.18 เพราะเพิ่งออก 2026-10-22) | ✅ รันจริง: API `/api/v1/servers/localhost` version `4.9.17`; image มี `pdns.sqlite3` สำเร็จรูปใน `/var/lib/powerdns`; ค่าเริ่มต้น `local-address=0.0.0.0,::` ล้มเมื่อไม่มี IPv6 → conf ของเราตั้ง `local-address=0.0.0.0`; API เปิดด้วย env `PDNS_AUTH_API_KEY` (startup script เขียน `pdns.d/_api.conf`, `webserver-allow-from=0.0.0.0/0`); referral จาก zone `.` (AUTHORITY=NS, ADDITIONAL=glue, AA=0) และ NXDOMAIN ตรวจด้วย dnspython แล้ว |
 | Python deps | ล็อกใน `pyproject.toml`/lockfile | _—_ |
 
 ## Assumptions (A-xxx)
@@ -182,8 +182,8 @@ autonomy: continuous
 ## Unverified (ต้องเคลียร์ก่อนจบ P8)
 | ID | เรื่อง | ทำไมยังไม่ตรวจ | วิธีตรวจ |
 |---|---|---|---|
-| U-001 | zone id ของ root ใน pdns API (`=2E`?) | ยังไม่มีการรัน pdns | เรียก API กับ image ที่ pin |
-| U-002 | ชื่อ option `soa-edit-api` ที่เหมาะกับ version ที่ pin | ยังไม่ได้อ่านเอกสารตาม version | อ่านเอกสาร + ทดสอบ |
+| U-001 | ~~zone id ของ root ใน pdns API (`=2E`?)~~ **ตรวจแล้ว 2026-10-23** | — | รัน `powerdns/pdns-auth-49:4.9.17` จริง: `POST /zones {name: "."}` → 201, id = `=2E`; `GET /zones/=2E` → 200, `GET /zones/.` → 404 |
+| U-002 | ~~ชื่อ option `soa-edit-api` ที่เหมาะกับ version ที่ pin~~ **ตรวจแล้ว 2026-10-23** | — | บน 4.9.17: zone ที่ตั้ง `soa_edit_api=INCEPTION-INCREMENT` → PATCH แล้ว serial ยัง 1→1; ตั้ง `INCREASE` → 1→2 จึงใช้ `INCREASE` ("หรือเทียบเท่า" ตาม §7.1) |
 | U-003 | Unbound ยอมรับ referral ที่ข้ามระดับจาก root (D-005) และ `qname-minimisation: no` ตามที่คาด | ยังไม่มีการรัน | integration test ใน P3-T10 |
 | U-004 | glue ที่เป็น private IP ผ่านตัวกรองของ Unbound เมื่อไม่มี `private-address` | ยังไม่มีการรัน | integration test ใน P3-T10 |
 
