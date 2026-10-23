@@ -245,6 +245,48 @@ def create_web_app(client_for_key: ClientFactory) -> FastAPI:
             on_error=f"domains/{name}",
         )
 
+    # --- hosts --------------------------------------------------------------------
+
+    @web.get("/hosts", response_class=HTMLResponse, name="hosts")
+    async def hosts(request: Request) -> Response:
+        listing = await fetch(request, lambda api: api.get("/hosts"))
+        return page(request, "hosts.html", hosts=listing["items"])
+
+    @web.post("/hosts")
+    async def create_host(request: Request) -> Response:
+        data = await form(request)
+        body = {
+            "name": first(data, "name"),
+            "ipv4": lines(data, "ipv4"),
+            "ipv6": lines(data, "ipv6"),
+        }
+        return await act(
+            request,
+            lambda api: api.post("/hosts", body),
+            then="hosts",
+            notice=f"created {body['name']}",
+        )
+
+    @web.post("/hosts/{name}/addresses")
+    async def update_host(request: Request, name: str) -> Response:
+        data = await form(request)
+        body = {"ipv4": lines(data, "ipv4"), "ipv6": lines(data, "ipv6")}
+        return await act(
+            request,
+            lambda api: api.put(f"/hosts/{name}", body),
+            then="hosts",
+            notice=f"updated {name}",
+        )
+
+    @web.post("/hosts/{name}/delete")
+    async def delete_host(request: Request, name: str) -> Response:
+        return await act(
+            request,
+            lambda api: api.delete(f"/hosts/{name}"),
+            then="hosts",
+            notice=f"deleted {name}",
+        )
+
     return web
 
 

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Hosts{% endblock %}
+{% block content %}
+<h1>Hosts</h1>
+<form method="post" action="{{ root }}hosts" class="card">
+  <h2>Create host</h2>
+  <p class="muted">A host under a registered domain is subordinate and needs an address (glue); any other host is external and has none.</p>
+  <section class="cols">
+    <label>Name <input name="name" placeholder="ns1.shop.com" required></label>
+    <label>IPv4 (space separated) <input name="ipv4" placeholder="192.168.1.10"></label>
+    <label>IPv6 (space separated) <input name="ipv6"></label>
+  </section>
+  <button>Create</button>
+</form>
+<p></p>
+<table>
+  <thead><tr><th>Name</th><th>Kind</th><th>Parent</th><th>Addresses</th><th>Used by</th><th></th></tr></thead>
+  <tbody>
+  {% for h in hosts %}
+    <tr>
+      <td>{{ h.name }}</td>
+      <td><span class="tag">{{ h.kind }}</span></td>
+      <td>{% if h.parent_domain %}<a href="{{ root }}domains/{{ h.parent_domain }}">{{ h.parent_domain }}</a>{% else %}-{% endif %}</td>
+      <td>
+        {% if h.kind == "subordinate" %}
+        <form method="post" action="{{ root }}hosts/{{ h.name }}/addresses" class="actions">
+          <input name="ipv4" value="{{ h.ipv4 | join(' ') }}" aria-label="IPv4 of {{ h.name }}">
+          <input name="ipv6" value="{{ h.ipv6 | join(' ') }}" aria-label="IPv6 of {{ h.name }}">
+          <button class="secondary">Save</button>
+        </form>
+        {% else %}-{% endif %}
+      </td>
+      <td>{% for d in h.used_by %}<a href="{{ root }}domains/{{ d }}">{{ d }}</a> {% else %}-{% endfor %}</td>
+      <td><form method="post" action="{{ root }}hosts/{{ h.name }}/delete" hx-confirm="Delete {{ h.name }}?"><button class="danger">Delete</button></form></td>
+    </tr>
+  {% else %}
+    <tr><td colspan="6" class="muted">No hosts.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
