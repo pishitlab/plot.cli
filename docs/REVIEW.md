@@ -28,11 +28,38 @@
 | F16 | ต่ำ | Client ที่ไม่ได้อยู่ใน RFC1918 (เช่น VPN/Tailscale 100.64.0.0/10) ถูก unbound ปฏิเสธเงียบ ๆ | `access-control` ตายตัว | env `RESOLVER_EXTRA_ALLOW` (CIDR คั่นด้วยช่องว่าง) + เอกสาร |
 | F17 | ต่ำ | backup ต้องพิมพ์คำสั่ง python ยาว ๆ เอง | RUNBOOK §6 | `make backup` / `make restore` + `make logs`, `make seed`, `make scenarios` |
 | F18 | — | เรื่องที่ต้องให้ผู้ใช้ตัดสิน/ตรวจบนเครื่องจริง: A-025 (SPEC ขัดกันเรื่อง NXDOMAIN/NOT_DELEGATED), U-005 (`dig +trace` จาก LAN), Acceptance §18 บน 192.168.1.175 | PROGRESS | ทำแทนไม่ได้ — คงไว้ในรายการรอผู้ใช้ |
+| F19 | สูง | (**พบตอนทดสอบ deploy**) pdns ทั้ง 3 ตัวส่ง DNS query ออกไป `secpoll.powerdns.com` ทุกครั้งที่ start (ค่าเริ่มต้นของ 4.9.17) — ขัด N8 | log `Failed to retrieve security status update for '4.9.17' on 'auth-4.9.17.security-status.secpoll.powerdns.com.'` | `security-poll-suffix=` (ว่าง) ใน `pdns.conf` ทั้งสองไฟล์ |
 
 ## ทบทวนรายงานรอบสอง
 
 อ่านรายงานซ้ำในฐานะผู้ตรวจ: เพิ่มเรื่องสิทธิ์ไฟล์ `.env`, การตรวจเวอร์ชัน Docker/Compose และพอร์ต 5300/8080 เข้าไปใน F1 (ตอนแรกมีแค่พอร์ต 53)
 
+ระหว่างแก้และทดสอบกรณีลบพบเพิ่ม (แก้แล้วทั้งหมด):
+- ตรวจพอร์ตด้วย `ss` อย่างเดียว เครื่องที่ไม่มี `ss` ข้ามการตรวจ**เงียบ ๆ** → deploy รอ 3 นาทีแล้วล้มแบบไม่บอกสาเหตุ → เปลี่ยนเป็น probe TCP ผ่าน `/dev/tcp` (ไม่ต้องมีเครื่องมือเสริม) + UDP ผ่าน `ss`/`lsof` และเตือนเมื่อตรวจไม่ได้
+- `BIND_ADDR` ที่ส่งมาตอนมี `.env` อยู่แล้วถูกเมินเงียบ ๆ → หยุดพร้อมบอกให้แก้ `.env`
+- `make restore` ทำงานกับไฟล์ใน `DATA_DIR` ที่เป็นของ root จากเครื่อง host → ผู้ใช้กลุ่ม `docker` ที่ไม่ใช่ root ทำไม่ได้; และ `compose run` ชน IP คงที่ของ registrar → ทำงานไฟล์ใน container `--network none` และตรวจ `integrity_check` ก่อนหยุดระบบ
+- `engine_from_env(api)` ไม่ใช้ client ที่ส่งมา (รวมไว้ใน F13)
+- RUNBOOK เดิมสั่งปิด `DNSStubListener` ของ systemd-resolved เสมอ ซึ่งไม่จำเป็น (resolved ฟัง `127.0.0.53/54` ไม่ชนกับ IP ของ LAN) และแก้ `/etc/resolv.conf` ของเครื่องโดยไม่จำเป็น → ทำเฉพาะเมื่อ preflight แจ้งชน
+
 ## ผลหลังแก้
 
-_(เติมหลังแก้ครบ — ดูหัวข้อถัดไป)_
+| ID | สถานะ | commit | หลักฐาน (รายละเอียดใน PROGRESS หัวข้อ Hardening) |
+|---|---|---|---|
+| F1 | ✅ | `P8-H01` | `make deploy` จากสถานะสะอาด → smoke 6/6; ซ้ำ 2 รอบ idempotent; กรณีลบ 6 แบบ (change-me, 0.0.0.0, IP ไม่ใช่ของเครื่อง, key สั้น, BIND_ADDR ไม่ตรง `.env`, พอร์ต 8080 ถูกใช้) → `ERROR:` ชัดเจนก่อนแตะ Docker |
+| F2 | ✅ (รอผล CI) | `P8-H02` | job `integration` ใน CI: clone สะอาด → `make deploy` ด้วย Dockerfile ตามจริง → deploy ซ้ำ → `make test-integration` → backup/restore → smoke; จำลองขั้นเดียวกันบน clone ใหม่ใน container ของ AI ผ่านครบ (ยกเว้น build ที่ต้องเติม CA ของ proxy ในเครื่อง AI) |
+| F3, F4 | ✅ | `P8-H03` | unit test R-PUB-09 + reconcile หลัง publish ล้ม |
+| F5, F13 | ✅ | `P8-H05` | client ตัวเดียวต่อ process, key ราย request; scenario ใช้ client ของผู้ login |
+| F6 | ✅ | `P8-H06` | WAL + busy_timeout, test เขียนพร้อมกัน 3 thread |
+| F7, F14, F15, F16 (เอกสาร) | ✅ | `P8-H07` | RUNBOOK §1, §5–§8, README |
+| F8 | ✅ | `P8-H08`, `P8-H10` | prune ใน lifecycle job + log rotation 10MB×3 |
+| F9 | ✅ | `P8-H09` | 409 แทน 500 เมื่อจดพร้อมกัน |
+| F10, F11, F15, F16, F19 | ✅ | `P8-H10` | ทุก service `(healthy)`, digest pin, `RESOLVER_EXTRA_ALLOW` render แล้ว checkconf ผ่าน, secpoll ใน log = 0 |
+| F12, F17 | ✅ | `P8-H01` | `make install` ด้วย lock; backup → ลบโดเมน → restore → โดเมนและ delegation กลับมา (`fixed: ['backup-test.com']`) |
+| F18 | ⏸ รอผู้ใช้ | — | A-025, U-005, U-006 (ใหม่: กฎ `DOCKER-USER`), Acceptance §18 บน 192.168.1.175, tag `v1.0.0` |
+
+ผลรวมหลังแก้ (container ของ AI, Docker 29.9.1 / Compose v5.6.0): `make lint` ผ่าน · `make test` 572 passed (coverage 99.80%, projector 100%) · `make test-integration` 26 passed
+
+### ข้อจำกัดที่ยังเหลือ (ตั้งใจ ไม่ใช่ข้อบกพร่อง)
+- ไม่มี TLS / key เดียว / ไม่มี user — ตาม SPEC (dev LAN) และระบุใน README/RUNBOOK §8
+- container รันเป็น root (ไฟล์ใน `DATA_DIR` เป็นของ root) — ไม่เปลี่ยนตอนนี้เพราะจะทำให้ DATA_DIR เดิมเปิดไม่ได้; `make restore` ทำงานผ่าน container จึงไม่ต้อง sudo, ลบ `data/` ต้อง sudo (RUNBOOK §6)
+- ผลทั้งหมดได้จาก container ของ AI ด้วย `BIND_ADDR=127.0.0.1` — บนเครื่องจริงต้องรัน `BIND_ADDR=192.168.1.175 make deploy` แล้วทำ Acceptance §18
