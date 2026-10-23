@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Scenarios{% endblock %}
+{% block content %}
+<h1>Scenarios</h1>
+<p class="muted">Each run uses fresh <code>scn-</code> domains and removes them afterwards. Running all takes about a minute.</p>
+<form method="post" action="{{ root }}scenarios/run" hx-target="main" hx-select="main" hx-swap="outerHTML" hx-indicator="#running">
+  <input type="hidden" name="id" value="all">
+  <button>Run all</button> <span id="running" class="htmx-indicator muted">running…</span>
+</form>
+<p></p>
+{% if results %}
+<table>
+  <thead><tr><th>Scenario</th><th>Result</th><th>Time</th><th>Steps</th></tr></thead>
+  <tbody>
+  {% for r in results %}
+    <tr>
+      <td>{{ r.id }} {{ r.name }}</td>
+      <td>{% if r.passed %}<span class="tag ok">PASS</span>{% else %}<span class="tag bad">FAIL</span>{% endif %}</td>
+      <td>{{ "%.1f" | format(r.seconds) }}s</td>
+      <td>
+        {% for step in r.steps %}
+          <div>{% if step.ok %}<span class="tag ok">ok</span>{% else %}<span class="tag bad">fail</span>{% endif %} {{ step.title }}: <span class="muted">{{ step.detail }}</span></div>
+        {% endfor %}
+        {% if r.cleanup_error %}<div class="tag warn">cleanup: {{ r.cleanup_error }}</div>{% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+<p></p>
+{% endif %}
+<table>
+  <thead><tr><th>ID</th><th>Name</th><th>What it shows</th><th></th></tr></thead>
+  <tbody>
+  {% for s in catalog %}
+    <tr>
+      <td>{{ s.id }}</td>
+      <td>{{ s.name }}</td>
+      <td class="muted">{{ s.description }}</td>
+      <td>
+        <form method="post" action="{{ root }}scenarios/run" hx-target="main" hx-select="main" hx-swap="outerHTML">
+          <input type="hidden" name="id" value="{{ s.id }}"><button class="secondary">Run</button>
+        </form>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

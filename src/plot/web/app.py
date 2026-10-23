@@ -16,12 +16,15 @@ from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 
 from plot.cli.client import ApiClient, ApiError
+from plot.cli.commands.scenario import engine_from_env
+from plot.scenarios.engine import Engine, load_catalog
 from plot.web import views
 
 HERE = Path(__file__).parent
 KEY_COOKIE = "plot_api_key"
 
 ClientFactory = Callable[[str], ApiClient]
+EngineFactory = Callable[[ApiClient], Engine]
 
 
 class NotLoggedIn(Exception):
@@ -43,7 +46,9 @@ def lines(data: dict[str, list[str]], key: str) -> list[str]:
     return [v for v in raw.replace(",", " ").split() if v]
 
 
-def create_web_app(client_for_key: ClientFactory) -> FastAPI:
+def create_web_app(
+    client_for_key: ClientFactory, engine_for: EngineFactory = engine_from_env
+) -> FastAPI:
     web = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
     templates = Jinja2Templates(directory=HERE / "templates")
     templates.env.filters["ago"] = views.relative
@@ -332,8 +337,36 @@ def create_web_app(client_for_key: ClientFactory) -> FastAPI:
             notice="reset done",
         )
 
+    # --- scenarios ----------------------------------------------------------------
+
+    @web.get("/scenarios", response_class=HTMLResponse, name="scenarios")
+    async def scenarios(request: Request) -> Response:
+        client(request)  # login required
+        return page(request, "scenarios.html", catalog=load_catalog().values(), results=None)
+
+    @web.post("/scenarios/run")
+    async def run_scenarios(request: Request) -> Response:
+        """Run one scenario (``id``) or all; this takes as long as the scenarios do."""
+        api = client(request)
+        wanted = first(await form(request), "id")
+        catalog = load_catalog()
+        chosen = (
+            list(catalog.values())
+            if wanted == "all"
+            else [catalog[wanted]]
+            if wanted in catalog
+            else []
+        )
+        if not chosen:
+            return back(request, "scenarios", error=f"unknown scenario {wanted!r}")
+        engine = engine_for(api)
+        results = await run_in_threadpool(lambda: [engine.run(s) for s in chosen])
+        return page(request, "scenarios.html", catalog=catalog.values(), results=results)
+
     return web
 
 
-def mount_web_ui(app: FastAPI, client_for_key: ClientFactory) -> None:
-    app.mount("/ui", create_web_app(client_for_key), name="ui")
+def mount_web_ui(
+    app: FastAPI, client_for_key: ClientFactory, engine_for: EngineFactory = engine_from_env
+) -> None:
+    app.mount("/ui", create_web_app(client_for_key, engine_for), name="ui")

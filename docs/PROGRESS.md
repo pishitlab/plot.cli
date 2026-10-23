@@ -121,7 +121,7 @@ autonomy: continuous
 - [x] P6-T02 หน้ารายละเอียดโดเมน (DB vs dns_visible, pending countdown, actions) — หลักฐาน: `/ui/domains/{name}` (ข้อมูลจด + `_dns_panel.html`: NS ใน DB vs `dns_visible`, published ago, pending นับถอยหลังเป็นวินาที โดย HTMX ดึง fragment `/ui/domains/{name}/dns` ทุก 1 วิ เฉพาะตอนมี pending) + ปุ่ม hold/release, renew, expire-now, override (ว่าง=คงเดิม, `none`=ล้าง), แทนที่ NS, delete — ทุกปุ่มเรียก API ผ่าน `ApiClient`; `views.dns_panel/override_body`; `tests/web/test_domain_page.py` (6); `make lint` ผ่าน; `make test` → 528 passed
 - [x] P6-T03 หน้า hosts — หลักฐาน: `/ui/hosts` (ตาราง kind/parent/addresses/used_by, ฟอร์มสร้าง, แก้ IP ของ host ย่อย, ลบ) ผ่าน `ApiClient`; `templates/hosts.html`; `tests/web/test_hosts_page.py` (happy + HOST_ADDR_REQUIRED/FORBIDDEN, INVALID_ADDRESS, HOST_IN_USE); `make lint` ผ่าน; `make test` → 530 passed
 - [x] P6-T04 หน้า settings — หลักฐาน: `/ui/settings` (ฟอร์ม runtime settings 5 ค่า → `PUT /admin/settings`, flush resolver ราย domain/ทั้งหมด, reset ตาม prefix หรือทั้งหมด); `templates/settings.html`; `tests/web/test_settings_page.py`; `make lint` ผ่าน; `make test` → 532 passed
-- [ ] P6-T05 หน้า scenarios
+- [x] P6-T05 หน้า scenarios — หลักฐาน: `/ui/scenarios` (ตาราง catalog S01–S16, ปุ่ม Run รายตัว/Run all ผ่าน HTMX, แสดงผลราย step + cleanup) ใช้ `Engine` แบบเดียวกับ `plot scenario` (`engine_from_env(api)` ด้วย `ApiClient` ของผู้ login); `templates/scenarios.html`; `tests/web/test_scenarios_page.py` (4); `make lint` ผ่าน; `make test` → 536 passed
 - [ ] P6-T06 หน้า history + smoke tests ทุกหน้า
 - **Exit Gate P6:** [ ] ผ่านครบตาม SPEC §16 P6 · [ ] ผู้ใช้อนุมัติ
 

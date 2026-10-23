@@ -13,6 +13,7 @@ from typing import Annotated, Any
 import typer
 
 from plot.cli import output
+from plot.cli.client import ApiClient
 from plot.cli.output import JsonOption
 from plot.dns.demo_ns import DemoNs
 from plot.scenarios.engine import DEFAULT_VARIABLES, Engine, ScenarioResult, load_catalog
@@ -30,7 +31,7 @@ ENV_VARIABLES = {
 }
 
 
-def engine_from_env() -> Engine:
+def engine_from_env(api: ApiClient | None = None) -> Engine:
     probe = LiveDns.from_env()
     urls = [u.strip() for u in os.environ.get("DEMO_NS_API_URLS", "").split(",") if u.strip()]
     key = os.environ.get("PDNS_API_KEY", "")
