@@ -92,7 +92,7 @@ autonomy: continuous
 ## P4 — CLI (SPEC §9)
 - [x] P4-T01 `cli/main.py` + config (`PLOT_API_URL`, `PLOT_API_KEY`) + client + `--json` — หลักฐาน: `src/plot/cli/main.py` (root Typer, `no_args_is_help`), `src/plot/cli/client.py` (`ApiClient.from_env` อ่าน `PLOT_API_URL` ค่าเริ่มต้น `http://localhost:8080` + `PLOT_API_KEY`; envelope → `ApiError(code,message)`; API ติดต่อไม่ได้ → `CONNECTION_ERROR`), `src/plot/cli/output.py` (`--json`, exit 1 พร้อม `code: message`), ย้าย seed ไป `cli/commands/seed.py`; `tests/cli/conftest.py` (CliRunner ↔ app ใน process), `tests/cli/test_client.py` (รวม exit 0 ของ `--help`, exit 2 เมื่อใช้คำสั่งผิด); `make lint` ผ่าน; `make test` → 387 passed
 - [x] P4-T02 `plot domain *` — หลักฐาน: `src/plot/cli/commands/domain.py`: `check`, `register [--years] [--owner] [--ns ...]`, `info`, `list [--prefix] [--owner]`, `renew --years`, `delete`, `hold`, `release`, `expire-now`; `tests/cli/test_domain_cli.py` (ข้อความ/`--json`, exit 1 = `code: message`, exit 2 เมื่อใช้ผิด); Assumption A-023; `make lint` ผ่าน; `make test` → 395 passed
-- [ ] P4-T03 `plot ns *`
+- [x] P4-T03 `plot ns *` — หลักฐาน: `src/plot/cli/commands/ns.py`: `plot ns set <domain> <ns1> <ns2> ...`, `plot ns clear <domain>`; `tests/cli/test_ns_cli.py` (text/`--json`, INVALID_NS_COUNT/DOMAIN_NOT_FOUND → exit 1, ขาด argument → exit 2); `make lint` ผ่าน; `make test` → 397 passed
 - [ ] P4-T04 `plot host *`
 - [ ] P4-T05 `plot override`, `plot admin *`
 - [ ] P4-T06 tests ด้วย `CliRunner` ครบทุกคำสั่ง + exit code
