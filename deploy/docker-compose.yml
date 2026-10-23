@@ -56,6 +56,14 @@ services:
       PDNS_API_URL: http://pdns-root:8081
       UNBOUND_CONTROL_HOST: unbound
       DEMO_NS_API_URLS: http://demo-ns1:8081,http://demo-ns2:8081
+      # `plot` (scenario, verify, ...) run inside this container talks to its neighbours
+      PLOT_API_URL: http://localhost:8080
+      PLOT_API_KEY: ${API_KEY}
+      PLOT_RESOLVER: ${UNBOUND_IP:-172.28.0.2}
+      PLOT_REGISTRY_ADDR: ${PDNS_ROOT_IP:-172.28.0.10}:53
+      PLOT_DEMO_NS1_IP: ${DEMO_NS1_IP:-172.28.0.31}
+      PLOT_DEMO_NS2_IP: ${DEMO_NS2_IP:-172.28.0.32}
+      PLOT_LAME_IP: ${LAME_IP:-172.28.0.99}
     volumes:
       - ${DATA_DIR:-./data}:/data
     ports:

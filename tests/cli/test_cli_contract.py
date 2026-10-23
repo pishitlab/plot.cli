@@ -13,7 +13,7 @@ from plot.cli.main import app
 from tests.cli.conftest import Plot
 
 SPEC = Path(__file__).resolve().parents[2] / "docs" / "SPEC.md"
-P5_COMMANDS = {"scenario"}  # verify (P5-T02) and demo-ns (P5-T07) are implemented
+P5_COMMANDS: set[str] = set()  # every §9 command exists since P5-T08
 
 
 def spec_commands() -> set[tuple[str, ...]]:
@@ -24,8 +24,8 @@ def spec_commands() -> set[tuple[str, ...]]:
     word = re.compile(r"[a-z][a-z-]*")
     commands: set[tuple[str, ...]] = set()
     for line in block.strip().splitlines():
-        # options in [...] may contain "|" themselves; "|" outside them separates commands
-        parts = re.sub(r"\[[^\]]*\]", "", line).removeprefix("plot ").split("|")
+        # [...] options and <...> placeholders may contain "|"; outside them it separates commands
+        parts = re.sub(r"\[[^\]]*\]|<[^>]*>", "", line).removeprefix("plot ").split("|")
         group = parts[0].split()[0]
         if group in P5_COMMANDS:
             continue
@@ -94,6 +94,7 @@ def test_every_command_answers_in_json(plot: Plot) -> None:
     # seed and demo-ns talk to the database / demo-ns directly: tests/unit/test_seed.py,
     # tests/cli/test_demo_ns_cli.py; verify needs DNS: tests/cli/test_verify_cli.py
     local = {("seed", "provider"), ("demo-ns", "add-zone"), ("verify",)}
+    local |= {("scenario", c) for c in ("list", "describe", "run")}  # test_scenario_cli.py
     assert covered == set(cli_commands()) - local
     for run in runs:
         result = plot(*run, "--json")
@@ -110,5 +111,15 @@ def test_groups_without_command_show_help(plot: Plot, args: list[str]) -> None:
 
 def test_root_help_lists_all_groups(plot: Plot) -> None:
     text = plot("--help").output
-    for name in ("domain", "ns", "host", "override", "admin", "seed", "verify", "demo-ns"):
+    for name in (
+        "domain",
+        "ns",
+        "host",
+        "override",
+        "admin",
+        "seed",
+        "verify",
+        "demo-ns",
+        "scenario",
+    ):
         assert name in text
