@@ -6,6 +6,19 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict
 
 
+class ErrorBody(BaseModel):
+    code: str
+    message: str
+    details: dict[str, Any]
+
+
+class ErrorEnvelope(BaseModel):
+    """Every error response (SPEC §8.1)."""
+
+    error: ErrorBody
+    request_id: str | None
+
+
 class RequestBody(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
