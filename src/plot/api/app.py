@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, FastAPI
 from plot import __version__
 from plot.api.deps import AppState, require_api_key
 from plot.api.errors import install_error_handlers
-from plot.api.routes import domains, health
+from plot.api.routes import domains, health, hosts
 
 API_PREFIX = "/api/v1"
 
@@ -26,6 +26,7 @@ def create_app(state: AppState) -> FastAPI:
     public.include_router(health.router)
     protected = APIRouter(prefix=API_PREFIX, dependencies=[Depends(require_api_key)])
     protected.include_router(domains.router)
+    protected.include_router(hosts.router)
     app.include_router(public)
     app.include_router(protected)
     return app
