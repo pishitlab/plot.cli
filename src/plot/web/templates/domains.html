@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Domains{% endblock %}
+{% block content %}
+<h1>Domains</h1>
+<section class="cols">
+  <form method="get" action="{{ root }}" class="card">
+    <h2>Filter</h2>
+    <label>Name starts with <input name="prefix" value="{{ prefix }}"></label>
+    <label>Owner <input name="owner" value="{{ owner }}"></label>
+    <button>Filter</button>
+  </form>
+  <form method="post" action="{{ root }}domains" class="card">
+    <h2>Register</h2>
+    <label>Name <input name="name" placeholder="shop.com" required></label>
+    <label>Owner <input name="owner" placeholder="web"></label>
+    <label>Years <input name="years" type="number" min="1" max="10" placeholder="1"></label>
+    <label>Nameservers <textarea name="nameservers" rows="2" placeholder="ns1.myhost.net ns2.myhost.net"></textarea></label>
+    <button>Register</button>
+  </form>
+</section>
+<table>
+  <thead><tr><th>Name</th><th>Owner</th><th>Status</th><th>Nameservers (DB)</th><th>DNS</th><th>Expires</th></tr></thead>
+  <tbody>
+  {% for d in domains %}
+    <tr>
+      <td><a href="{{ root }}domains/{{ d.name }}">{{ d.name }}</a></td>
+      <td>{{ d.owner }}</td>
+      <td>{{ d.status | join(", ") or "-" }}{% if d.expired %} <span class="tag warn">expired</span>{% endif %}</td>
+      <td>{{ d.nameservers | join(", ") or "-" }}</td>
+      <td>{% if d.dns_visible.pending %}<span class="tag">pending</span>{% elif d.dns_visible.nameservers %}<span class="tag ok">published</span>{% else %}<span class="tag">none</span>{% endif %}</td>
+      <td>{{ d.expires_at[:10] }}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="6" class="muted">No domains.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% if more %}<p class="muted">Showing the first 200; narrow the filter to see the rest.</p>{% endif %}
+{% endblock %}

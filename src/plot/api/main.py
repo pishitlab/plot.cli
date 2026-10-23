@@ -1,15 +1,18 @@
 """Composition root of the registrar process (``uvicorn --factory plot.api.main:create``)."""
 
 import logging
+import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 
+import httpx
 from fastapi import FastAPI
 from sqlalchemy.orm import Session, sessionmaker
 
 from plot.api.app import create_app
 from plot.api.deps import AppState
+from plot.cli.client import ApiClient
 from plot.core.clock import Clock, SystemClock
 from plot.core.settings import EnvConfig, RuntimeSettings, load_env_config, load_runtime_defaults
 from plot.core.tlds import NamePolicy, load_name_policy
@@ -22,6 +25,7 @@ from plot.services.events import RequestContext
 from plot.services.lifecycle import LifecycleService
 from plot.services.ports import DnsPublisher
 from plot.services.settings import load_settings
+from plot.web.app import mount_web_ui
 
 LIFECYCLE_INTERVAL = timedelta(seconds=5)
 SYSTEM_ACTOR = "system"
@@ -114,4 +118,11 @@ def create() -> FastAPI:
 
     app = create_app(state)
     app.router.lifespan_context = lifespan
+    api_url = os.environ.get("PLOT_API_URL", "http://localhost:8080")
+    mount_web_ui(
+        app,
+        lambda key: ApiClient(
+            httpx.Client(base_url=api_url, headers={"X-API-Key": key}, timeout=60)
+        ),
+    )
     return app

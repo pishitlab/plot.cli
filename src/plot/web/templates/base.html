@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Domain Sandbox{% endblock %} · plot</title>
+  <link rel="stylesheet" href="{{ root }}static/style.css">
+  <script src="{{ root }}static/htmx.min.js" defer></script>
+</head>
+<body hx-boost="true">
+  <header>
+    <strong>Domain Sandbox</strong>
+    <nav>
+      <a href="{{ root }}">Domains</a>
+      <a href="{{ root }}hosts">Hosts</a>
+      <a href="{{ root }}settings">Settings</a>
+      <a href="{{ root }}scenarios">Scenarios</a>
+      <a href="{{ root }}history">History</a>
+    </nav>
+    <form method="post" action="{{ root }}logout" class="inline"><button class="link">Log out</button></form>
+  </header>
+  <main>
+    {% if error %}<p class="flash error" role="alert">{{ error }}</p>{% endif %}
+    {% if notice %}<p class="flash notice">{{ notice }}</p>{% endif %}
+    {% block content %}{% endblock %}
+  </main>
+  <footer>dev LAN only — do not expose to the internet</footer>
+</body>
+</html>

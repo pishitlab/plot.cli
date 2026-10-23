@@ -19,6 +19,7 @@ dependencies = [
     "httpx",
     "dnspython",
     "pyyaml",
+    "jinja2",
 ]
 
 [project.scripts]
@@ -37,7 +38,13 @@ dev = [
 where = ["src"]
 
 [tool.setuptools.package-data]
-plot = ["py.typed", "db/migrations/script.py.mako", "scenarios/catalog/*.yml"]
+plot = [
+    "py.typed",
+    "db/migrations/script.py.mako",
+    "scenarios/catalog/*.yml",
+    "web/templates/*.html",
+    "web/static/*",
+]
 
 [tool.ruff]
 line-length = 100

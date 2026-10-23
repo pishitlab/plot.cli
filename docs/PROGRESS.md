@@ -117,7 +117,7 @@ autonomy: continuous
   - [x] S06 พิสูจน์ delay จริงด้วยเวลาที่วัดได้ ±3 วินาที → วัดได้ 20.4 วิ (เกณฑ์ 17–23) + `test_s06_delay_measured_within_3_seconds`
 
 ## P6 — Web UI (SPEC §12.1)
-- [ ] P6-T01 layout + หน้ารายการโดเมน
+- [x] P6-T01 layout + หน้ารายการโดเมน — หลักฐาน: `src/plot/web/app.py` (sub-app `/ui`: login/logout cookie, `act()` = เรียก `ApiClient` ใน threadpool แล้ว redirect, จัดการ `ApiError`/UNAUTHORIZED), `web/views.py`, templates `base.html` (nav + flash + htmx + `hx-boost`), `login.html`, `error.html`, `domains.html` (filter + ฟอร์มจด + ตาราง DB vs สถานะ DNS), `static/style.css`, `static/htmx.min.js`; mount ใน `api/main.py`; `tests/web/test_domains_page.py` (8); Assumption A-030; `make lint` ผ่าน; `make test` → 522 passed
 - [ ] P6-T02 หน้ารายละเอียดโดเมน (DB vs dns_visible, pending countdown, actions)
 - [ ] P6-T03 หน้า hosts
 - [ ] P6-T04 หน้า settings
@@ -202,6 +202,7 @@ autonomy: continuous
 | A-027 | `plot verify <domain> --expect <ns1> <ns2> ...` ตาม §9 ตรงตัว: `--expect` เป็น flag บอกว่า argument ที่ตามมาเป็น NS ที่คาด (ไม่มี `--expect` → exit 2); exit 0 ทุกผลการตรวจ (รวม `ERROR`) โดยสถานะอยู่ในข้อความ/JSON; exit 1 เฉพาะ error จาก API ตาม §9 | §2.6 | — |
 | A-028 | Scenario engine: (ก) รูปแบบ YAML ตาม docstring ของ `scenarios/engine.py` — step ละ 1 action: `api`/`verify`/`dns`/`provider_zone`/`mark`; (ข) ชื่อโดเมน `${a}` → `scn-<id>-a-<hex6>.com`, `${a:upper}` สำหรับ S14, `${lame_ip}` = IP ที่ไม่มี server (ค่าเริ่มต้น `172.28.0.99`, env `PLOT_LAME_IP`); (ค) step ที่มี `within` จะ poll ทุก 0.5 วิจนตรงหรือหมดเวลา, `elapsed` วัดจาก `mark` ล่าสุด; (ง) ล้มที่ step ใดหยุด scenario นั้น; cleanup เสมอ: คืน settings เดิม, `reset prefix=scn-`, ลบ zone บน demo-ns ที่สร้าง; (จ) `provider_zone` ต้องเข้าถึง pdns API ของ demo-ns (`DEMO_NS_API_URLS`, `PDNS_API_KEY`) → `plot scenario run` ควรรันใน container registrar | §2.6 (§10 ไม่กำหนดรูปแบบ YAML) | P5-T09 |
 | A-029 | `plot scenario run` exit 1 เมื่อมี scenario ไม่ผ่าน (เพื่อใช้ใน script/CI ได้) แม้ §9 ระบุ exit 1 = error จาก API; compose ตั้ง env ให้ `plot` ใน container registrar (`PLOT_API_URL=http://localhost:8080`, `PLOT_RESOLVER`=unbound, `PLOT_REGISTRY_ADDR`=pdns-root:53, IP ของ demo-ns, `PLOT_LAME_IP`) | §2.6 | — |
+| A-030 | Web UI: (ก) mount เป็น sub-app ที่ `/ui` (ไม่ปนกับ API §8.2; `/` ยังเป็น 404); (ข) UI ไม่มีสิทธิ์ของตัวเอง: หน้า login ให้ใส่ `API_KEY` แล้วเก็บใน cookie HttpOnly + SameSite=strict และทุก action เรียก API ด้วย key นั้นผ่าน `ApiClient` ตัวเดียวกับ CLI (D-008 ยังเป็นด่านเดียว); key ผิด/ถูกยกเลิก → กลับหน้า login; (ค) HTMX 2.0.11 เก็บไว้ใน `web/static/` (ตรวจ sha1 กับ npm registry, license 0BSD) เพราะเครื่อง dev ที่ใช้ DNS ของ sandbox resolve CDN ไม่ได้ (D-004); (ง) แปลง form ด้วย `urllib.parse` แทน `python-multipart` (ไม่อยู่ใน §4.5); (จ) form ใช้ POST→redirect→GET พร้อมข้อความ flash ใน query string; `jinja2==3.1.6` เพิ่มใน dependency ตาม §4.5 (P6) | §2.6 | — |
 
 ## Unverified (ต้องเคลียร์ก่อนจบ P8)
 | ID | เรื่อง | ทำไมยังไม่ตรวจ | วิธีตรวจ |
