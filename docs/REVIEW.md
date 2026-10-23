@@ -46,7 +46,7 @@
 | ID | สถานะ | commit | หลักฐาน (รายละเอียดใน PROGRESS หัวข้อ Hardening) |
 |---|---|---|---|
 | F1 | ✅ | `P8-H01` | `make deploy` จากสถานะสะอาด → smoke 6/6; ซ้ำ 2 รอบ idempotent; กรณีลบ 6 แบบ (change-me, 0.0.0.0, IP ไม่ใช่ของเครื่อง, key สั้น, BIND_ADDR ไม่ตรง `.env`, พอร์ต 8080 ถูกใช้) → `ERROR:` ชัดเจนก่อนแตะ Docker |
-| F2 | ✅ (รอผล CI) | `P8-H02` | job `integration` ใน CI: clone สะอาด → `make deploy` ด้วย Dockerfile ตามจริง → deploy ซ้ำ → `make test-integration` → backup/restore → smoke; จำลองขั้นเดียวกันบน clone ใหม่ใน container ของ AI ผ่านครบ (ยกเว้น build ที่ต้องเติม CA ของ proxy ในเครื่อง AI) |
+| F2 | ✅ | `P8-H02` | CI run [#12](https://github.com/pishitlab/plot.cli/actions/runs/39897731045) job `integration` **success** บน `ubuntu-latest` (เครื่องสะอาด, build ด้วย Dockerfile ใน repo ตามจริง): `make deploy` 40 วิ → deploy ซ้ำ 10 วิ → `make test-integration` ผ่าน → backup/restore + smoke ผ่าน |
 | F3, F4 | ✅ | `P8-H03` | unit test R-PUB-09 + reconcile หลัง publish ล้ม |
 | F5, F13 | ✅ | `P8-H05` | client ตัวเดียวต่อ process, key ราย request; scenario ใช้ client ของผู้ login |
 | F6 | ✅ | `P8-H06` | WAL + busy_timeout, test เขียนพร้อมกัน 3 thread |
