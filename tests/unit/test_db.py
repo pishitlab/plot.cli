@@ -1,3 +1,4 @@
+import threading
 from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
 
@@ -124,3 +125,35 @@ def test_foreign_keys_cascade_and_constraints() -> None:
         session.add(DomainStatus(domain_id=domain.id, status="ok"))
         with pytest.raises(IntegrityError):
             session.flush()
+
+
+def test_file_database_uses_wal_and_busy_timeout(tmp_path: Path) -> None:
+    engine = make_engine(sqlite_url(tmp_path))
+    with engine.connect() as connection:
+        assert connection.execute(text("PRAGMA journal_mode")).scalar_one() == "wal"
+        assert connection.execute(text("PRAGMA busy_timeout")).scalar_one() == 10000
+        assert connection.execute(text("PRAGMA foreign_keys")).scalar_one() == 1
+
+
+def test_concurrent_writers_wait_instead_of_failing(tmp_path: Path) -> None:
+    engine = make_engine(sqlite_url(tmp_path))
+    migrate(engine)
+    sessions = make_session_factory(engine)
+    errors: list[Exception] = []
+
+    def writer(prefix: str) -> None:
+        try:
+            for n in range(20):
+                with sessions.begin() as session:
+                    session.add(_domain(f"{prefix}{n}.com"))
+        except Exception as err:  # pragma: no cover - only on failure
+            errors.append(err)
+
+    threads = [threading.Thread(target=writer, args=(p,)) for p in ("a", "b", "c")]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert errors == []
+    with sessions() as session:
+        assert session.query(Domain).count() == 60

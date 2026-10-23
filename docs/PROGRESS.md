@@ -162,6 +162,10 @@ autonomy: continuous
 
 ---
 
+## Hardening ก่อน deploy (ผู้ใช้อนุมัติ 2026-10-23: "ตรวจแบบมืออาชีพ … ทำให้สมบูรณ์ … git เอาไป deploy ได้เลยในครั้งเดียว")
+รายงานตรวจ: [`docs/REVIEW.md`](REVIEW.md) (F1–F18) · commit ขึ้นต้น `P8-Hxx` ตาม ID ของข้อค้นพบ
+- [x] F6 SQLite WAL + busy_timeout 10 วิ + synchronous=NORMAL — หลักฐาน: `test_file_database_uses_wal_and_busy_timeout`, `test_concurrent_writers_wait_instead_of_failing` (3 thread × 20 transaction ไม่มี `database is locked`)
+
 ## Environment (กรอกใน P0-T02)
 ตรวจเมื่อ 2026-10-22 ใน cloud container ของ AI (ไม่ใช่ `192.168.1.175`)
 - Python: `python3.12 --version` → `Python 3.12.3` (ใช้ทำ `.venv` ผ่าน `make install`); `python3` ของระบบ = 3.13.16 (ไม่ใช้)

@@ -22,13 +22,18 @@ def make_engine(url: str) -> Engine:
         # One shared connection so every session sees the same in-memory database.
         kwargs = {"poolclass": StaticPool, "connect_args": {"check_same_thread": False}}
     engine = create_engine(url, **kwargs)
-    event.listen(engine, "connect", _enable_foreign_keys)
+    event.listen(engine, "connect", _configure_connection)
     return engine
 
 
-def _enable_foreign_keys(dbapi_connection: Any, _record: Any) -> None:
+def _configure_connection(dbapi_connection: Any, _record: Any) -> None:
     cursor = dbapi_connection.cursor()
     cursor.execute("PRAGMA foreign_keys=ON")
+    # The API, the publish worker and `plot seed/scenario` in the same container write the
+    # same file: WAL lets readers run beside a writer, and writers wait instead of failing.
+    cursor.execute("PRAGMA busy_timeout=10000")
+    cursor.execute("PRAGMA journal_mode=WAL")  # stays "memory" for in-memory databases
+    cursor.execute("PRAGMA synchronous=NORMAL")
     cursor.close()
 
 
