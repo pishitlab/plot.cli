@@ -1,9 +1,6 @@
 """FastAPI application factory (SPEC §8)."""
 
-import uuid
-
-from fastapi import APIRouter, Depends, FastAPI, Request, Response
-from starlette.middleware.base import RequestResponseEndpoint
+from fastapi import APIRouter, Depends, FastAPI
 
 from plot import __version__
 from plot.api.deps import AppState, require_api_key
@@ -24,13 +21,6 @@ def create_app(state: AppState) -> FastAPI:
     )
     app.state.plot = state
     install_error_handlers(app)
-
-    @app.middleware("http")
-    async def assign_request_id(request: Request, call_next: RequestResponseEndpoint) -> Response:
-        request.state.request_id = uuid.uuid4().hex
-        response = await call_next(request)
-        response.headers["X-Request-ID"] = request.state.request_id
-        return response
 
     public = APIRouter(prefix=API_PREFIX)
     public.include_router(health.router)
