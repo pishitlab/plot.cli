@@ -1,0 +1,111 @@
+"""``DnsPublisher`` implementation: projector + scheduler + registry client (SPEC §6.5)."""
+
+import logging
+import threading
+from collections.abc import Callable, Collection
+from typing import Protocol
+
+from sqlalchemy.orm import Session, sessionmaker
+
+from plot.core.clock import Clock
+from plot.core.settings import RuntimeSettings
+from plot.dns.projector import Snapshot, project
+from plot.dns.scheduler import Backoff, RunResult, apply_due, propagation_delay, schedule_change
+from plot.services.ports import ResolverControl
+
+log = logging.getLogger("plot.dns")
+
+SettingsLoader = Callable[[Session], RuntimeSettings]
+
+
+class Registry(Protocol):
+    def apply(self, domain: str, old: Snapshot, new: Snapshot) -> None: ...
+
+
+class Publisher:
+    def __init__(
+        self,
+        registry: Registry,
+        resolver: ResolverControl,
+        clock: Clock,
+        settings: SettingsLoader,
+    ) -> None:
+        self.registry = registry
+        self.resolver = resolver
+        self.clock = clock
+        self.settings = settings
+
+    def domains_changed(self, session: Session, domain_names: Collection[str]) -> None:
+        """Snapshot now (R-PUB-01) and schedule at now + delay (R-PUB-05). No registry I/O,
+        so API calls succeed even while pdns is down (R-PUB-09)."""
+        settings = self.settings(session)
+        now = self.clock.now()
+        for name in sorted(domain_names):
+            snapshot = project(session, name, now, settings)
+            schedule_change(
+                session, name, snapshot, now, propagation_delay(session, name, settings)
+            )
+
+    def reconcile(self, session: Session) -> list[str]:
+        raise NotImplementedError  # P3-T06
+
+    def apply_due(self, session: Session) -> RunResult:
+        return apply_due(session, self.clock.now(), self.registry.apply)
+
+
+class PublishWorker:
+    """Background thread applying due changes; retries with backoff while pdns fails."""
+
+    def __init__(
+        self,
+        sessions: sessionmaker[Session],
+        publisher: Publisher,
+        *,
+        interval: float = 0.5,
+        on_tick: Callable[[], None] | None = None,
+    ) -> None:
+        self.sessions = sessions
+        self.publisher = publisher
+        self.interval = interval
+        self.on_tick = on_tick
+        self.backoff = Backoff()
+        self.healthy = True
+        self._stop = threading.Event()
+        self._thread: threading.Thread | None = None
+
+    def run_once(self) -> float:
+        """One pass; returns how long to wait before the next one."""
+        if self.on_tick is not None:
+            try:
+                self.on_tick()
+            except Exception:
+                log.exception("tick hook failed")
+        with self.sessions.begin() as session:
+            result = self.publisher.apply_due(session)
+        if result.error is None:
+            self.healthy = True
+            self.backoff.reset()
+            return self.interval
+        self.healthy = False
+        delay = self.backoff.failed()
+        log.warning("publish failed, retrying in %.0fs: %s", delay, result.error)
+        return delay
+
+    def start(self) -> None:
+        self._thread = threading.Thread(target=self._loop, name="plot-publisher", daemon=True)
+        self._thread.start()
+
+    def stop(self, timeout: float = 5.0) -> None:
+        self._stop.set()
+        if self._thread is not None:
+            self._thread.join(timeout)
+
+    def _loop(self) -> None:
+        while not self._stop.is_set():
+            try:
+                delay = self.run_once()
+            except Exception:
+                log.exception("publish worker pass failed")
+                self.healthy = False
+                delay = self.backoff.failed()
+            self._stop.wait(delay)
