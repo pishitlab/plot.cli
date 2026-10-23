@@ -50,7 +50,15 @@ class Publisher:
         raise NotImplementedError  # P3-T06
 
     def apply_due(self, session: Session) -> RunResult:
-        return apply_due(session, self.clock.now(), self.registry.apply)
+        result = apply_due(session, self.clock.now(), self.registry.apply)
+        if result.applied and self.settings(session).flush_on_apply:
+            # R-PUB-08: resolvers must not keep serving the old delegation from cache.
+            for name in result.applied:
+                try:
+                    self.resolver.flush(name)
+                except Exception:
+                    log.warning("resolver flush failed for %s", name, exc_info=True)
+        return result
 
 
 class PublishWorker:

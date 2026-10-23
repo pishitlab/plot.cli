@@ -233,3 +233,54 @@ def test_worker_thread_applies_and_runs_tick_hook(
     assert third_tick.wait(timeout=5), "worker loop did not run"
     worker.stop()
     assert "shop.com" in registry.zone
+
+
+class FlakyResolver(FakeResolverControl):
+    def flush(self, domain_name: str | None = None) -> None:
+        super().flush(domain_name)
+        raise ConnectionError("unbound-control down")
+
+
+@pytest.mark.parametrize("flush_on_apply", [True, False])
+def test_R_PUB_08_flush_resolver_after_apply(
+    sessions: sessionmaker[Session],
+    clock: FakeClock,
+    registry: FakeRegistry,
+    policy: NamePolicy,
+    flush_on_apply: bool,
+) -> None:
+    resolver = FakeResolverControl()
+    settings = DEFAULTS.model_copy(update={"flush_on_apply": flush_on_apply})
+    publisher = Publisher(registry, resolver, clock, lambda session: settings)
+    change(
+        sessions,
+        clock,
+        publisher,
+        policy,
+        lambda d: d.register("shop.com", "a", nameservers=NS_PAIR),
+    )
+    with sessions.begin() as session:
+        publisher.apply_due(session)
+        publisher.apply_due(session)  # nothing new: no second flush
+    assert resolver.flushed == (["shop.com"] if flush_on_apply else [])
+
+
+def test_R_PUB_08_flush_failure_does_not_undo_publish(
+    sessions: sessionmaker[Session],
+    clock: FakeClock,
+    registry: FakeRegistry,
+    policy: NamePolicy,
+) -> None:
+    resolver = FlakyResolver()
+    publisher = Publisher(registry, resolver, clock, lambda session: DEFAULTS)
+    change(
+        sessions,
+        clock,
+        publisher,
+        policy,
+        lambda d: d.register("shop.com", "a", nameservers=NS_PAIR),
+    )
+    with sessions.begin() as session:
+        assert publisher.apply_due(session).applied == ["shop.com"]
+    assert resolver.flushed == ["shop.com"]
+    assert "shop.com" in registry.zone
