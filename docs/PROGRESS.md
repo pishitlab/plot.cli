@@ -11,15 +11,15 @@ autonomy: continuous
 |---|---|---|---|---|
 | P0 | วางรากฐาน | 5% | 5% | ✅ เสร็จ |
 | P1 | แกนโดเมน | 15% | 20% | ✅ เสร็จ |
-| P2 | Registrar API | 15% | 35% | 🟦 กำลังทำ |
-| P3 | DNS จริง | 20% | 55% | ⬜ |
+| P2 | Registrar API | 15% | 35% | ✅ เสร็จ |
+| P3 | DNS จริง | 20% | 55% | 🟦 กำลังทำ |
 | P4 | CLI | 10% | 65% | ⬜ |
 | P5 | สถานการณ์และตัวตรวจ | 13% | 78% | ⬜ |
 | P6 | Web UI | 10% | 88% | ⬜ |
 | P7 | โมดูลเสริม | 6% | 94% | ⬜ |
 | P8 | ปิดงาน | 6% | 100% | ⬜ |
 
-ความคืบหน้ารวม: **20%** (คำนวณจากน้ำหนัก phase × สัดส่วน task ที่ติ๊กแล้วใน phase นั้น; phase จะนับเต็มเมื่อ Exit Gate ผ่านและผู้ใช้อนุมัติ)
+ความคืบหน้ารวม: **35%** (คำนวณจากน้ำหนัก phase × สัดส่วน task ที่ติ๊กแล้วใน phase นั้น; phase จะนับเต็มเมื่อ Exit Gate ผ่านและผู้ใช้อนุมัติ)
 
 สัญลักษณ์: ⬜ ยังไม่เริ่ม · 🟦 กำลังทำ · ✅ เสร็จ (มีหลักฐาน) · ⚠️ เสร็จแต่มี `NOT RUN` ค้าง
 
@@ -65,8 +65,12 @@ autonomy: continuous
 - [x] P2-T06 routes: history — หลักฐาน: `GET /domains/{name}/history` → `{items: [Event{ts, action, actor, before, after, request_id}]}` + `DomainService.history`; `tests/api/test_history_api.py` (request_id จาก header ไปถึง event, ประวัติคงอยู่หลังลบ, DOMAIN_NOT_FOUND/INVALID_NAME); Assumption A-015; `make lint` ผ่าน; `make test` → 259 passed
 - [x] P2-T07 routes: admin (settings, expire-now, reset, flush, reconcile) — เรียก port ผ่าน Fake ได้ — หลักฐาน: `src/plot/api/routes/admin.py` (`GET/PUT /admin/settings`, `POST /admin/domains/{name}/expire-now`, `POST /admin/reset`, `POST /admin/resolver/flush`, `POST /admin/publish/reconcile` ผ่าน Fake ports), `DomainService.reset`, `DnsPublisher.reconcile` ใน port + fake, คอลัมน์ `domains.seed` + migration `0002_domain_seed_flag`; `tests/api/test_admin_api.py`; Assumption A-016; `make lint` ผ่าน; `make test` → 276 passed (รวม test migration == models หลังเพิ่ม 0002)
 - [x] P2-T08 OpenAPI snapshot test — หลักฐาน: `tests/api/test_openapi.py` เทียบ `app.openapi()` กับ `tests/api/openapi.snapshot.json` (สร้างใหม่ได้ด้วย `PLOT_UPDATE_SNAPSHOT=1` หลัง contract change ที่อนุมัติแล้ว); เอกสาร OpenAPI ประกาศ `ErrorEnvelope` เป็น `default` response และตัด 422 ของ FastAPI ออก (API ตอบ 400 `VALIDATION_ERROR` จริง); snapshot มี 16 path / 21 operation; `make lint` ผ่าน; `make test` → 277 passed
-- [ ] P2-T09 API tests ครบทุก endpoint + ทุก error code §8.1
-- **Exit Gate P2:** [ ] ผ่านครบตาม SPEC §16 P2 · [ ] ผู้ใช้อนุมัติ
+- [x] P2-T09 API tests ครบทุก endpoint + ทุก error code §8.1 — หลักฐาน: `tests/api/test_contract.py`: ตาราง trigger ทำให้เกิด error ครบทั้ง 22 code ของ §8.1 ผ่าน HTTP จริง (`INTERNAL_ERROR` จาก publisher ที่ throw และพิสูจน์ว่า rollback) และตรวจรูป envelope ทุกครั้ง; ทุก endpoint ที่ต้องใช้ key ตอบ 401 เมื่อไม่ส่ง key; ร่วมกับ test ราย route ใน T03–T07 ทุก endpoint มี happy + error; coverage ของ `plot.api` 99%; `make lint` ผ่าน; `make test` → 322 passed
+- **Exit Gate P2:** [x] ผ่านครบตาม SPEC §16 P2 · [x] ผู้ใช้อนุมัติ (autonomy `continuous` — §2.7: ไปต่อเมื่อ gate ผ่านครบ)
+  - [x] ทุก endpoint ใน §8.2 มี API test (happy + อย่างน้อย 1 error) → test ราย route ใน `tests/api/test_*_api.py` + `test_every_protected_endpoint_requires_api_key` (21 endpoint) + health degraded
+  - [x] ทุก error code ใน §8.1 มี test ที่ทำให้เกิดได้จริง → `test_every_error_code_is_reachable_through_the_api` 22/22 และ `test_trigger_table_covers_every_code`
+  - [x] OpenAPI snapshot test ผ่าน → `tests/api/test_openapi.py`
+  - [x] ไม่มี endpoint นอก §8.2 → `test_routes_match_spec_endpoints_exactly` (อ่านตาราง §8.2 จาก SPEC เทียบกับ OpenAPI ของ app = 22 คู่ method+path, ไม่มี /docs /redoc /openapi.json)
 
 ## P3 — DNS จริง (SPEC §6.5, §7)
 - [ ] P3-T01 `dns/projector.py`: DB state → snapshot (R-PUB-01..04) + tests 100% branch
@@ -196,3 +200,4 @@ _ยังไม่มี_
 | 2026-10-22 | P0-T01..T04 | โครงโปรเจกต์, ตรวจสภาพแวดล้อม, CI, README สั้น; ยื่น SCR-001 (`types-PyYAML`); P0-T05 ส่งคำถาม Q-001..Q-006 ให้ผู้ใช้แล้ว รอคำตอบ | `make lint` ผ่าน, `make test` → 1 passed; CI run #1 success |
 | 2026-10-22 | P0-T05, P1-T01..T12 | ผู้ใช้มอบอำนาจตัดสิน Q-001..Q-006 → SPEC v0.2; ทำแกนโดเมน P1 ครบ (errors, names, tlds, clock/settings, DB+migration, ports/fakes, events, hosts, domains, nameservers, lifecycle, governance tests); Assumptions A-003..A-011 | `make lint` ผ่าน; `make test` → 189 passed, coverage core+services 99.88% |
 | 2026-10-23 | — | ผู้ใช้สั่ง "ทำต่อเนื่องให้ อัตโนมัติ" → AI เปลี่ยน `autonomy: continuous` ตามคำสั่ง และถือเป็นการอนุมัติ Exit Gate P1 | ข้อความผู้ใช้ใน chat |
+| 2026-10-23 | P2-T01..T09 | Registrar API ครบตาม §8 (auth, envelope, request_id, domains, hosts, ns/status/overrides, history, admin, OpenAPI snapshot, contract tests); เพิ่ม `domains.seed` (migration 0002); Assumptions A-012..A-016 | `make lint` ผ่าน; `make test` → 322 passed |
