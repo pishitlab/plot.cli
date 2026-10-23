@@ -303,3 +303,13 @@ def test_R_DOM_07_domain_changes_write_events(domains: DomainService, ctx: Servi
     assert renew.before["expires_at"] == "2027-01-01T00:00:00+00:00"
     assert renew.after["expires_at"] == "2028-01-01T00:00:00+00:00"
     assert (renew.actor, renew.request_id) == ("test", "req-1")
+
+
+def test_R_DOM_01_concurrent_registration_is_domain_exists(
+    domains: DomainService, ctx: ServiceContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Two requests pass the existence check together; the loser must get 409, not 500."""
+    domains.register("shop.com", owner="alice")
+    monkeypatch.setattr("plot.services.domains.find_domain", lambda ctx, name: None)
+    with pytest.raises(DomainExists):
+        domains.register("shop.com", owner="bob")

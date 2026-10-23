@@ -6,6 +6,7 @@ from dataclasses import asdict, dataclass
 from typing import Any
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from plot.core.errors import (
@@ -153,7 +154,10 @@ class HostService:
         host = Host(name=name, kind=kind, parent_domain=parent, created_at=self.ctx.clock.now())
         host.addrs = [HostAddr(family=f, address=a) for f, a in addrs]
         self.session.add(host)
-        self.session.flush()
+        try:
+            self.session.flush()
+        except IntegrityError:
+            raise HostExists(name=name) from None  # created concurrently by another request
         view = host_view(self.session, host)
         self.ctx.record("host.create", host_name=name, after=view.to_event())
         return view

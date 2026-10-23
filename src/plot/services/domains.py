@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from typing import Any, Final
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from plot.core.clock import add_years
 from plot.core.errors import (
@@ -216,7 +217,11 @@ class DomainService:
             updated_at=now,
         )
         self.session.add(domain)
-        self.session.flush()
+        try:
+            self.session.flush()
+        except IntegrityError:
+            # another request registered the same name between our check and insert
+            raise DomainExists(name=parsed.name) from None
         changed = replace_nameservers(self.ctx, domain, nameservers)
         view = domain_view(self.ctx, domain)
         self.ctx.record("domain.register", domain_name=domain.name, after=view.to_event())

@@ -187,3 +187,12 @@ def test_list_hosts_sorted(hosts: HostService) -> None:
     hosts.create("ns2.other.net")
     hosts.create("ns1.other.net")
     assert [h.name for h in hosts.list_hosts()] == ["ns1.other.net", "ns2.other.net"]
+
+
+def test_R_HOST_07_concurrent_creation_is_host_exists(
+    hosts: HostService, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    hosts.create("ns1.other.net")
+    monkeypatch.setattr("plot.services.hosts.find_host", lambda session, name: None)
+    with pytest.raises(HostExists):
+        hosts.create("ns1.other.net")
