@@ -28,6 +28,8 @@ class EnvConfig(BaseSettings):
     unbound_control_host: str = "unbound"
     unbound_control_port: int = 8953
     config_dir: Path = Path("./config")
+    # comma separated pdns API URLs of demo-ns1, demo-ns2 (zones of the stand-in provider)
+    demo_ns_api_urls: str = ""
 
 
 class RuntimeSettings(BaseModel):

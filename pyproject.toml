@@ -21,6 +21,9 @@ dependencies = [
     "pyyaml",
 ]
 
+[project.scripts]
+plot = "plot.cli.main:app"
+
 [project.optional-dependencies]
 dev = [
     "pytest",
