@@ -4,6 +4,7 @@
 ของระบบ hosting ได้ซ้ำ ๆ โดยไม่ต้องใช้โดเมนจริงหรือ IP จริง
 
 > ⚠️ **สำหรับ dev LAN เท่านั้น — ห้ามเปิดสู่อินเทอร์เน็ต** (ไม่มี user/role, API key เดียว, resolver รับเฉพาะ RFC1918)
+> API/Web UI เป็น HTTP ธรรมดา: API key (และ cookie ของ Web UI) วิ่งบน LAN แบบไม่เข้ารหัส — ใช้ key เฉพาะ sandbox นี้เท่านั้น
 
 | เอกสาร | เนื้อหา |
 |---|---|
@@ -27,13 +28,16 @@
 
 ## ติดตั้ง (สรุป — รายละเอียดใน [RUNBOOK](docs/RUNBOOK.md))
 
+ต้องมี Docker Engine + Compose v2, `git`, `make`, `curl` บนเครื่อง Linux
+
 ```sh
-cp .env.example .env          # ตั้ง BIND_ADDR, API_KEY, PDNS_API_KEY (สุ่มยาว ๆ)
-make up                       # build + start ทั้ง 5 service
-curl http://192.168.1.175:8080/api/v1/health      # {"status":"ok",...}
-docker compose --env-file .env --project-directory . -f deploy/docker-compose.yml \
-  exec registrar plot seed provider               # จด myhost.net + ns1/ns2 บน demo-ns
+git clone <repo> plot.cli && cd plot.cli
+BIND_ADDR=192.168.1.175 make deploy
 ```
+
+`make deploy` ทำครบในคำสั่งเดียวและรันซ้ำได้: ตรวจเครื่อง (Docker, Compose v2, `BIND_ADDR` เป็น IP ของเครื่องนี้,
+พอร์ต 53/5300/8080 ว่าง) → สร้าง `.env` พร้อม API key สุ่ม (mode 600) ถ้ายังไม่มี → build → start ตามลำดับ healthy →
+seed `myhost.net` → smoke test · API key สำหรับ Web UI/CLI อยู่ใน `.env` (`API_KEY=`)
 
 จากนั้นตั้ง DNS ของเครื่อง dev / container ของระบบ hosting เป็น `192.168.1.175` (ดู RUNBOOK §3)
 
@@ -92,6 +96,7 @@ docker compose ... exec registrar plot scenario run --all      # ~1 นาที
 | `.env` `API_KEY`, `PDNS_API_KEY` | key ของ registrar API และ pdns API (ภายใน) — ต้องตั้งเสมอ |
 | `.env` `SUBNET`, `PDNS_ROOT_IP`, `*_IP` | network ภายใน compose (ค่าเริ่มต้นตาม SPEC §4.1) |
 | `.env` `UPSTREAM_DNS`, `CACHE_MAX_TTL`, `DATA_DIR` | upstream ของ passthrough, TTL สูงสุดใน cache, ที่เก็บ `registrar.db` |
+| `.env` `RESOLVER_EXTRA_ALLOW` | CIDR เพิ่มเติมที่ให้ใช้ resolver นอกจาก RFC1918 (คั่นด้วยช่องว่าง เช่น VPN `100.64.0.0/10`) |
 | `config/tlds.yml` · `config/passthrough.txt` · `config/settings.default.yml` | suffix ที่จดได้ · โดเมนจริงที่ forward · ค่าเริ่มต้น runtime settings |
 
 ## พัฒนา / ทดสอบ
@@ -100,7 +105,7 @@ docker compose ... exec registrar plot scenario run --all      # ~1 นาที
 make install          # .venv + dev tools
 make lint             # ruff + mypy --strict
 make test             # unit + api + cli + web (coverage gate core/services ≥ 90%, projector 100%)
-make up && make test-integration      # ต้องมี Docker: integration + scenario บน stack จริง
+make deploy && make test-integration  # ต้องมี Docker: integration + scenario บน stack จริง
 make smoke            # ตรวจ stack ที่รันอยู่แบบเร็ว (health, NXDOMAIN, passthrough, myhost.net)
-make fmt | make down
+make backup | make restore FILE=… | make logs | make ps | make seed | make scenarios | make down | make fmt
 ```
