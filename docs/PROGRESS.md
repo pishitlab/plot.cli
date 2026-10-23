@@ -90,7 +90,7 @@ autonomy: continuous
   - [x] ถ้ารัน docker ไม่ได้: N/A — รันได้ใน container ของ AI (BIND_ADDR=127.0.0.1) แต่ **ยังไม่ได้รันบน `192.168.1.175`** → รอผู้ใช้ยืนยันตาม §2.9
 
 ## P4 — CLI (SPEC §9)
-- [ ] P4-T01 `cli/main.py` + config (`PLOT_API_URL`, `PLOT_API_KEY`) + client + `--json`
+- [x] P4-T01 `cli/main.py` + config (`PLOT_API_URL`, `PLOT_API_KEY`) + client + `--json` — หลักฐาน: `src/plot/cli/main.py` (root Typer, `no_args_is_help`), `src/plot/cli/client.py` (`ApiClient.from_env` อ่าน `PLOT_API_URL` ค่าเริ่มต้น `http://localhost:8080` + `PLOT_API_KEY`; envelope → `ApiError(code,message)`; API ติดต่อไม่ได้ → `CONNECTION_ERROR`), `src/plot/cli/output.py` (`--json`, exit 1 พร้อม `code: message`), ย้าย seed ไป `cli/commands/seed.py`; `tests/cli/conftest.py` (CliRunner ↔ app ใน process), `tests/cli/test_client.py` (รวม exit 0 ของ `--help`, exit 2 เมื่อใช้คำสั่งผิด); `make lint` ผ่าน; `make test` → 387 passed
 - [ ] P4-T02 `plot domain *`
 - [ ] P4-T03 `plot ns *`
 - [ ] P4-T04 `plot host *`
