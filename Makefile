@@ -37,6 +37,7 @@ up:
 down:
 	$(COMPOSE) down
 
-# Needs the stack from `make up`; talks to it through BIND_ADDR from ENV_FILE.
+# Needs the stack from `make up`; talks to it through BIND_ADDR from ENV_FILE and runs the
+# scenario catalog inside the registrar container.
 test-integration:
-	PLOT_ENV_FILE=$(ENV_FILE) $(BIN)/pytest -m integration tests/integration -v
+	PLOT_ENV_FILE=$(ENV_FILE) $(BIN)/pytest -m integration tests/integration tests/scenarios -v

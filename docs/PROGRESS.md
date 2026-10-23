@@ -14,12 +14,12 @@ autonomy: continuous
 | P2 | Registrar API | 15% | 35% | ✅ เสร็จ |
 | P3 | DNS จริง | 20% | 55% | ⚠️ gate ผ่านใน container ของ AI, รอผู้ใช้ยืนยันบน dev box |
 | P4 | CLI | 10% | 65% | ✅ เสร็จ |
-| P5 | สถานการณ์และตัวตรวจ | 13% | 78% | 🟦 กำลังทำ |
-| P6 | Web UI | 10% | 88% | ⬜ |
+| P5 | สถานการณ์และตัวตรวจ | 13% | 78% | ✅ เสร็จ (รันใน container ของ AI) |
+| P6 | Web UI | 10% | 88% | 🟦 กำลังทำ |
 | P7 | โมดูลเสริม | 6% | 94% | ⬜ |
 | P8 | ปิดงาน | 6% | 100% | ⬜ |
 
-ความคืบหน้ารวม: **65%** (P3 นับเมื่อ gate ผ่านในสภาพแวดล้อมของ AI; ผลบน dev box ยังรอผู้ใช้) (คำนวณจากน้ำหนัก phase × สัดส่วน task ที่ติ๊กแล้วใน phase นั้น; phase จะนับเต็มเมื่อ Exit Gate ผ่านและผู้ใช้อนุมัติ)
+ความคืบหน้ารวม: **78%** (P3 นับเมื่อ gate ผ่านในสภาพแวดล้อมของ AI; ผลบน dev box ยังรอผู้ใช้) (คำนวณจากน้ำหนัก phase × สัดส่วน task ที่ติ๊กแล้วใน phase นั้น; phase จะนับเต็มเมื่อ Exit Gate ผ่านและผู้ใช้อนุมัติ)
 
 สัญลักษณ์: ⬜ ยังไม่เริ่ม · 🟦 กำลังทำ · ✅ เสร็จ (มีหลักฐาน) · ⚠️ เสร็จแต่มี `NOT RUN` ค้าง
 
@@ -110,8 +110,11 @@ autonomy: continuous
 - [x] P5-T06 scenario S11–S15 — หลักฐาน: `catalog/s11_duplicate.yml` (409 DOMAIN_EXISTS), `s12_never_registered.yml` (NXDOMAIN ทั้ง resolver/registry/verifier), `s13_ttl_cache.yml` (provider A/B บน demo-ns1/2, `flush_on_apply=false`, TTL 300 → resolver ยังเห็นของเก่าจน `admin/resolver/flush`), `s14_normalize.yml`, `s15_host_lifecycle.yml` (HOST_IN_USE ทั้งลบ host และลบโดเมน); ผ่าน `test_scenario_catalog.py`; รันจริงใน P5-T09; `make lint` ผ่าน; `make test` → 499 passed (**แก้ไข**: commit `c4cd1ef` บันทึกผลนี้ก่อนรันเสร็จ — จริง ๆ ล้มตอน collect เพราะ key `on` ใน YAML 1.1 ถูกอ่านเป็น `true`; เปลี่ยนเป็น `servers` แล้วรันใหม่ได้ 499 passed)
 - [x] P5-T07 `demo-ns add-zone` + scenario S16 — หลักฐาน: `src/plot/cli/commands/demo_ns.py` (`plot demo-ns add-zone <domain> [--a IP] [--json]`: zone บน demo-ns1/2 มี NS ns1/ns2.myhost.net, `--a` ใส่ A ของ apex และ `www`; รันใน container registrar), `catalog/s16_end_to_end.yml`; `tests/cli/test_demo_ns_cli.py`, `test_catalog_is_complete` (S01–S16 ครบ 16); contract §9 รวม `demo-ns` แล้ว; `make lint` ผ่าน; `make test` → 505 passed (504 + test ที่เพิ่ม)
 - [x] P5-T08 `plot scenario list|describe|run` — หลักฐาน: `src/plot/cli/commands/scenario.py` (`plot scenario list`, `describe <id>`, `run <id\|--all>` + `--json`; engine จาก env: API, `LiveDns`, `LiveScenarioDns`, `DemoNs`), env ของ `plot` ใน service registrar ของ compose; `tests/cli/test_scenario_cli.py`; contract §9 ตรวจครบทุกคำสั่งแล้ว (รวม scenario/verify/demo-ns); Assumption A-029; `make lint` ผ่าน; `make test` → 514 passed
-- [ ] P5-T09 รัน `plot scenario run --all` บน compose
-- **Exit Gate P5:** [ ] ผ่านครบตาม SPEC §16 P5 · [ ] ผู้ใช้อนุมัติ
+- [x] P5-T09 รัน `plot scenario run --all` บน compose — หลักฐาน: รันบน compose จริง (container ของ AI, BIND_ADDR=127.0.0.1): `docker compose exec registrar plot scenario run --all` → **16/16 scenarios passed** (รอบ 1: 55.6 วิ; รอบ 2 `--json` ก็ 16/16, S06 `VERIFIED after 20.4s`, S08 `LAME after 19.8s`, ไม่มี cleanup error; หลังรันไม่เหลือโดเมน `scn-*`, demo-ns เหลือแค่ `myhost.net`, settings กลับค่าเดิม); เพิ่ม `tests/scenarios/test_catalog_on_stack.py` (integration) และ `make test-integration` รวม `tests/scenarios` → **26 passed**; `make test` → 514 passed
+- **Exit Gate P5:** [x] ผ่านครบตาม SPEC §16 P5 (ใน container ของ AI) · [x] ผู้ใช้อนุมัติ (autonomy `continuous`)
+  - [x] verifier มี unit test ครบทุกค่า enum (fake DNS) → `tests/unit/test_verify.py::test_every_status_is_covered` + test ราย status (7/7)
+  - [x] `plot scenario run --all` ผ่านทุกข้อบน compose → 16/16 (2 รอบ) + `test_scenario_catalog_passes_on_stack`; **ยังไม่ได้รันบน `192.168.1.175`** (รวมใน Acceptance §18)
+  - [x] S06 พิสูจน์ delay จริงด้วยเวลาที่วัดได้ ±3 วินาที → วัดได้ 20.4 วิ (เกณฑ์ 17–23) + `test_s06_delay_measured_within_3_seconds`
 
 ## P6 — Web UI (SPEC §12.1)
 - [ ] P6-T01 layout + หน้ารายการโดเมน
@@ -227,3 +230,4 @@ _ยังไม่มี_
 | 2026-10-23 | P3-T07 (หมายเหตุสภาพแวดล้อม) | ใน cloud container ของ AI, pip ใน `docker build` ไม่เชื่อ CA ของ egress proxy → build registrar ด้วยสำเนา Dockerfile ใน scratchpad ที่เพิ่ม 2 บรรทัด (`COPY` CA + `PIP_CERT`) เท่านั้น ไม่ได้แก้ `deploy/registrar/Dockerfile` ใน repo; บน `192.168.1.175` ไม่ต้องใช้ | `docker build` สำเร็จ, compose ขึ้นครบ 5 service |
 | 2026-10-23 | P3-T01..T10 | DNS จริง: projector, scheduler, pdns client, publisher+worker, unbound control, reconcile, compose ครบ 5 service, seed provider, health, integration tests; ปิด U-001..U-004; Assumptions A-017..A-022 | `make test` → 382 passed; `make test-integration` → 24 passed ×2 |
 | 2026-10-23 | P4-T01..T06 | CLI `plot` ครบตาม §9 (domain, ns, host, override, admin, seed) ผ่าน API client + `--json` + exit code 0/1/2; Assumptions A-023, A-024 | `make test` → 432 passed |
+| 2026-10-23 | P5-T01..T09 | verifier (7 สถานะ), `plot verify`, scenario engine + S01–S16, `plot demo-ns add-zone`, `plot scenario`; พบ SPEC ขัดกัน S03/S12 → A-025 (รอผู้ใช้ทบทวน); Assumptions A-025..A-029 | `make test` → 514 passed; `make test-integration` → 26 passed; `plot scenario run --all` → 16/16 |
