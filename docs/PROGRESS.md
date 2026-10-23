@@ -13,13 +13,13 @@ autonomy: continuous
 | P1 | แกนโดเมน | 15% | 20% | ✅ เสร็จ |
 | P2 | Registrar API | 15% | 35% | ✅ เสร็จ |
 | P3 | DNS จริง | 20% | 55% | ⚠️ gate ผ่านใน container ของ AI, รอผู้ใช้ยืนยันบน dev box |
-| P4 | CLI | 10% | 65% | 🟦 กำลังทำ |
-| P5 | สถานการณ์และตัวตรวจ | 13% | 78% | ⬜ |
+| P4 | CLI | 10% | 65% | ✅ เสร็จ |
+| P5 | สถานการณ์และตัวตรวจ | 13% | 78% | 🟦 กำลังทำ |
 | P6 | Web UI | 10% | 88% | ⬜ |
 | P7 | โมดูลเสริม | 6% | 94% | ⬜ |
 | P8 | ปิดงาน | 6% | 100% | ⬜ |
 
-ความคืบหน้ารวม: **55%** (P3 นับเมื่อ gate ผ่านในสภาพแวดล้อมของ AI; ผลบน dev box ยังรอผู้ใช้) (คำนวณจากน้ำหนัก phase × สัดส่วน task ที่ติ๊กแล้วใน phase นั้น; phase จะนับเต็มเมื่อ Exit Gate ผ่านและผู้ใช้อนุมัติ)
+ความคืบหน้ารวม: **65%** (P3 นับเมื่อ gate ผ่านในสภาพแวดล้อมของ AI; ผลบน dev box ยังรอผู้ใช้) (คำนวณจากน้ำหนัก phase × สัดส่วน task ที่ติ๊กแล้วใน phase นั้น; phase จะนับเต็มเมื่อ Exit Gate ผ่านและผู้ใช้อนุมัติ)
 
 สัญลักษณ์: ⬜ ยังไม่เริ่ม · 🟦 กำลังทำ · ✅ เสร็จ (มีหลักฐาน) · ⚠️ เสร็จแต่มี `NOT RUN` ค้าง
 
@@ -95,8 +95,11 @@ autonomy: continuous
 - [x] P4-T03 `plot ns *` — หลักฐาน: `src/plot/cli/commands/ns.py`: `plot ns set <domain> <ns1> <ns2> ...`, `plot ns clear <domain>`; `tests/cli/test_ns_cli.py` (text/`--json`, INVALID_NS_COUNT/DOMAIN_NOT_FOUND → exit 1, ขาด argument → exit 2); `make lint` ผ่าน; `make test` → 397 passed
 - [x] P4-T04 `plot host *` — หลักฐาน: `src/plot/cli/commands/host.py`: `create [--ipv4 ...] [--ipv6 ...]`, `update` (ส่งเฉพาะ family ที่ระบุ), `delete`, `info`, `list`; `tests/cli/test_host_cli.py` (text/`--json`, HOST_ADDR_REQUIRED/FORBIDDEN, INVALID_ADDRESS, HOST_NOT_FOUND, HOST_IN_USE → exit 1, ขาด argument → exit 2); `make lint` ผ่าน; `make test` → 399 passed
 - [x] P4-T05 `plot override`, `plot admin *` — หลักฐาน: `src/plot/cli/commands/admin.py`: `plot override <domain> [--delay S\|none] [--ttl S\|none]`, `plot admin settings [--delay] [--ttl]`, `plot admin reset [--prefix P \| --all]`, `plot admin flush [<domain>]`; `tests/cli/test_admin_cli.py`; Assumption A-024; `make lint` ผ่าน; `make test` → 403 passed
-- [ ] P4-T06 tests ด้วย `CliRunner` ครบทุกคำสั่ง + exit code
-- **Exit Gate P4:** [ ] ผ่านครบตาม SPEC §16 P4 · [ ] ผู้ใช้อนุมัติ
+- [x] P4-T06 tests ด้วย `CliRunner` ครบทุกคำสั่ง + exit code — หลักฐาน: `tests/cli/` ทั้งหมดใช้ `CliRunner` กับ API app ใน process: ราย command (`test_domain_cli.py`, `test_ns_cli.py`, `test_host_cli.py`, `test_admin_cli.py`, seed ใน `tests/unit/test_seed.py`) + `test_cli_contract.py` (อ่าน code block §9 จาก SPEC → command tree ต้องเท่ากันพอดี 19 คำสั่ง ไม่รวม P5; ทุกคำสั่งมี `--json` + help; รันทุกคำสั่งด้วย `--json` → exit 0 และ JSON ถูกต้อง); exit 1 + `code: message` และ exit 2 ทดสอบในแต่ละไฟล์; coverage `plot.cli` 91%; `make lint` ผ่าน; `make test` → 432 passed
+- **Exit Gate P4:** [x] ผ่านครบตาม SPEC §16 P4 · [x] ผู้ใช้อนุมัติ (autonomy `continuous`)
+  - [x] ทุกคำสั่งมี test (typer `CliRunner` กับ API test client) → `tests/cli/*` + `test_every_command_answers_in_json` ครอบคลุมทุกคำสั่งยกเว้น `seed provider` (test ใน `tests/unit/test_seed.py`)
+  - [x] `--json` ทุกคำสั่ง, exit code ตาม §9 → `test_every_command_has_json_option_and_help` (19 คำสั่ง); exit 1 `code: message` (เช่น `DOMAIN_EXISTS: domain already registered`), exit 2 เมื่อใช้ผิด; รันจริง `PLOT_API_URL=http://127.0.0.1:1 plot domain info x.com` → `CONNECTION_ERROR: ...`, exit 1
+  - [x] `plot --help` ครบและตรงกับ §9 → `test_command_tree_matches_spec_section_9` (เทียบกับ code block ของ §9 โดยตรง) + `plot --help` แสดง override, domain, ns, host, admin, seed
 
 ## P5 — สถานการณ์และตัวตรวจ (SPEC §10, §11)
 - [ ] P5-T01 `verifier/verify.py` + unit tests ทุกค่า enum (fake DNS)
@@ -218,3 +221,4 @@ _ยังไม่มี_
 | 2026-10-23 | P2-T01..T09 | Registrar API ครบตาม §8 (auth, envelope, request_id, domains, hosts, ns/status/overrides, history, admin, OpenAPI snapshot, contract tests); เพิ่ม `domains.seed` (migration 0002); Assumptions A-012..A-016 | `make lint` ผ่าน; `make test` → 322 passed |
 | 2026-10-23 | P3-T07 (หมายเหตุสภาพแวดล้อม) | ใน cloud container ของ AI, pip ใน `docker build` ไม่เชื่อ CA ของ egress proxy → build registrar ด้วยสำเนา Dockerfile ใน scratchpad ที่เพิ่ม 2 บรรทัด (`COPY` CA + `PIP_CERT`) เท่านั้น ไม่ได้แก้ `deploy/registrar/Dockerfile` ใน repo; บน `192.168.1.175` ไม่ต้องใช้ | `docker build` สำเร็จ, compose ขึ้นครบ 5 service |
 | 2026-10-23 | P3-T01..T10 | DNS จริง: projector, scheduler, pdns client, publisher+worker, unbound control, reconcile, compose ครบ 5 service, seed provider, health, integration tests; ปิด U-001..U-004; Assumptions A-017..A-022 | `make test` → 382 passed; `make test-integration` → 24 passed ×2 |
+| 2026-10-23 | P4-T01..T06 | CLI `plot` ครบตาม §9 (domain, ns, host, override, admin, seed) ผ่าน API client + `--json` + exit code 0/1/2; Assumptions A-023, A-024 | `make test` → 432 passed |
