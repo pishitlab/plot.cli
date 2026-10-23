@@ -73,7 +73,7 @@ autonomy: continuous
   - [x] ไม่มี endpoint นอก §8.2 → `test_routes_match_spec_endpoints_exactly` (อ่านตาราง §8.2 จาก SPEC เทียบกับ OpenAPI ของ app = 22 คู่ method+path, ไม่มี /docs /redoc /openapi.json)
 
 ## P3 — DNS จริง (SPEC §6.5, §7)
-- [x] P3-T01 `dns/projector.py`: DB state → snapshot (R-PUB-01..04) + tests 100% branch — หลักฐาน: `src/plot/dns/projector.py` (`project`, `delegation_published`); `tests/unit/test_projector.py` มี `test_R_PUB_01_*`..`test_R_PUB_04_*` (idempotent, ไม่มี NS/hold ทุกค่า/expired → ไม่มี delegation, glue เฉพาะ host ย่อยที่ถูกใช้ รวมกรณีโดเมนอื่นใช้, TTL override); `make test` เพิ่ม gate `coverage report --include=*/plot/dns/projector.py --fail-under=100` (branch) → 100%; Assumption A-017; `make lint` ผ่าน; `make test` → 333 passed
+- [x] P3-T01 `dns/projector.py`: DB state → snapshot (R-PUB-01..04) + tests 100% branch — หลักฐาน: `src/plot/dns/projector.py` (`project`, `delegation_published`); `tests/unit/test_projector.py` มี `test_R_PUB_01_*`..`test_R_PUB_04_*` (idempotent, ไม่มี NS/hold ทุกค่า/expired → ไม่มี delegation, glue เฉพาะ host ย่อยที่ถูกใช้ รวมกรณีโดเมนอื่นใช้, TTL override); `make test` เพิ่ม gate `coverage report --include=*/plot/dns/projector.py --fail-under=100` (branch) → 100%; Assumption A-017; `make lint` ผ่าน; `make test` → 332 passed
 - [ ] P3-T02 `published_state` + `pending_changes` + `dns/scheduler.py` (R-PUB-05, 06, 09)
 - [ ] P3-T03 `dns/pdns_client.py` (REST ของ pdns: REPLACE/DELETE RRset) — ตรวจ path/zone-id กับ version ที่ pin
 - [ ] P3-T04 `dns/publisher.py` ผูก projector+scheduler+client เป็น `DnsPublisher`
