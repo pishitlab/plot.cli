@@ -1,0 +1,22 @@
+id: S02
+name: child NS + glue
+description: Child nameservers under the domain itself; the registry must publish their glue.
+domains: [b]
+steps:
+  - api: {method: POST, path: /domains, body: {name: "${b}", owner: scenario}}
+    expect: {status: 201}
+  - title: child nameservers with private addresses
+    api: {method: POST, path: /hosts, body: {name: "ns1.${b}", ipv4: [192.168.10.1]}}
+    expect: {status: 201, json: {kind: subordinate, parent_domain: "${b}"}}
+  - api: {method: POST, path: /hosts, body: {name: "ns2.${b}", ipv4: [192.168.10.2]}}
+    expect: {status: 201}
+  - api: {method: PUT, path: "/domains/${b}/nameservers", body: {nameservers: ["ns1.${b}", "ns2.${b}"]}}
+    expect: {status: 200}
+  - title: registry view has the referral with glue
+    dns:
+      server: registry
+      name: "${b}"
+      type: NS
+      answers: ["ns1.${b}.", "ns2.${b}."]
+      glue: ["ns1.${b}. 192.168.10.1", "ns2.${b}. 192.168.10.2"]
+      within: 30

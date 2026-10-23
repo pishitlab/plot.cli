@@ -10,7 +10,8 @@ A scenario file holds ``id``, ``name``, ``description``, ``domains`` (placeholde
 - ``mark: <label>`` starts the clock that ``elapsed`` is measured from
 
 ``${a}`` expands to the scenario's random ``scn-`` domain for placeholder ``a``;
-``${a:upper}`` to its upper-case form; ``${lame_ip}`` to an address nothing answers on.
+``${a:upper}`` to its upper-case form; other names come from the engine's ``variables``
+(``lame_ip``: an address nothing answers on, ``demo_ns1_ip``/``demo_ns2_ip``).
 Every run ends with cleanup: settings restored, ``scn-`` data reset, demo-ns zones removed.
 """
 
@@ -30,6 +31,11 @@ from plot.cli.client import ApiClient, ApiError
 from plot.verifier.verify import DnsProbe, verify
 
 PREFIX = "scn-"
+DEFAULT_VARIABLES = {
+    "lame_ip": "172.28.0.99",
+    "demo_ns1_ip": "172.28.0.31",
+    "demo_ns2_ip": "172.28.0.32",
+}
 DEFAULT_WITHIN = 0.0
 POLL_INTERVAL = 0.5
 
@@ -191,7 +197,7 @@ class Engine:
         dns: ScenarioDns,
         zones: Zones | None,
         *,
-        lame_ip: str = "172.28.0.99",
+        variables: dict[str, str] | None = None,
         monotonic: Callable[[], float] = time.monotonic,
         sleep: Callable[[float], None] = time.sleep,
     ) -> None:
@@ -199,7 +205,7 @@ class Engine:
         self.verifier_dns = verifier_dns
         self.dns = dns
         self.zones = zones
-        self.lame_ip = lame_ip
+        self.variables = {**DEFAULT_VARIABLES, **(variables or {})}
         self.monotonic = monotonic
         self.sleep = sleep
 
@@ -215,7 +221,10 @@ class Engine:
         try:
             for index, raw in enumerate(scenario.steps, start=1):
                 step = Step.model_validate(
-                    _expand(raw.model_dump(by_alias=True, exclude_none=True), names, self.lame_ip)
+                    _expand(
+                        raw.model_dump(by_alias=True, exclude_none=True),
+                        {**self.variables, **names},
+                    )
                 )
                 step_started = self.monotonic()
                 try:
@@ -358,22 +367,20 @@ class _RunState:
 _PLACEHOLDER = re.compile(r"\$\{([a-z_][a-z0-9_]*)(?::(upper))?\}")
 
 
-def _expand(value: Any, names: dict[str, str], lame_ip: str) -> Any:
+def _expand(value: Any, names: dict[str, str]) -> Any:
     if isinstance(value, str):
 
         def replace(match: re.Match[str]) -> str:
             key, upper = match.group(1), match.group(2)
-            if key == "lame_ip":
-                return lame_ip
             if key not in names:
                 raise ScenarioError(f"unknown placeholder ${{{key}}}")
             return names[key].upper() if upper else names[key]
 
         return _PLACEHOLDER.sub(replace, value)
     if isinstance(value, list):
-        return [_expand(v, names, lame_ip) for v in value]
+        return [_expand(v, names) for v in value]
     if isinstance(value, dict):
-        return {_expand(k, names, lame_ip): _expand(v, names, lame_ip) for k, v in value.items()}
+        return {_expand(k, names): _expand(v, names) for k, v in value.items()}
     return value
 
 

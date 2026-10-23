@@ -1,0 +1,11 @@
+id: S04
+name: points at another provider
+description: The customer delegated to someone else's nameservers.
+domains: [a]
+steps:
+  - api:
+      method: POST
+      path: /domains
+      body: {name: "${a}", owner: scenario, nameservers: [ns1.other.net, ns2.other.net]}
+    expect: {status: 201}
+  - verify: {domain: "${a}", expect: [ns1.myhost.net, ns2.myhost.net], status: MISMATCH, within: 30}

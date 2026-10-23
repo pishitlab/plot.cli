@@ -1,0 +1,18 @@
+id: S01
+name: happy path (external NS)
+description: Register a domain and point it at the provider's nameservers ns1/ns2.myhost.net.
+domains: [a]
+steps:
+  - title: provider serves the zone
+    provider_zone: {domain: "${a}", records: {www: 10.0.1.1}}
+  - title: register
+    api: {method: POST, path: /domains, body: {name: "${a}", owner: scenario}}
+    expect: {status: 201}
+  - title: set nameservers
+    api:
+      method: PUT
+      path: /domains/${a}/nameservers
+      body: {nameservers: [ns1.myhost.net, ns2.myhost.net]}
+    expect: {status: 200}
+  - title: verifier sees the delegation
+    verify: {domain: "${a}", expect: [ns1.myhost.net, ns2.myhost.net], status: VERIFIED, within: 30}

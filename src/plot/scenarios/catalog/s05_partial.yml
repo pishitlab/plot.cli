@@ -1,0 +1,11 @@
+id: S05
+name: partial
+description: Only one of the expected nameservers is in the delegation.
+domains: [a]
+steps:
+  - api:
+      method: POST
+      path: /domains
+      body: {name: "${a}", owner: scenario, nameservers: [ns1.myhost.net, ns1.other.net]}
+    expect: {status: 201}
+  - verify: {domain: "${a}", expect: [ns1.myhost.net, ns2.myhost.net], status: PARTIAL, within: 30}

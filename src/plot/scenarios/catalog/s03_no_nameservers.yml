@@ -1,0 +1,11 @@
+id: S03
+name: registered without NS
+description: A registered domain without nameservers has no delegation at all.
+domains: [a]
+steps:
+  - api: {method: POST, path: /domains, body: {name: "${a}", owner: scenario}}
+    expect: {status: 201}
+  - title: DNS has no such name
+    dns: {server: resolver, name: "${a}", type: NS, rcode: NXDOMAIN}
+  - title: verifier knows it is registered but not delegated (A-025)
+    verify: {domain: "${a}", expect: [ns1.myhost.net, ns2.myhost.net], status: NOT_DELEGATED}
