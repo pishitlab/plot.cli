@@ -4,7 +4,7 @@ from typing import Any
 import httpx
 import pytest
 
-from plot.dns.pdns_client import PdnsClient, PdnsError, rrset_changes
+from plot.dns.pdns_client import PdnsClient, PdnsError, root_rrsets, rrset_changes
 
 NEW = {
     "nameservers": ["ns1.shop.com", "ns1.myhost.net"],
@@ -50,6 +50,14 @@ def test_rrset_changes_dropped_glue_host_is_deleted() -> None:
     assert {"name": "ns1.shop.com.", "type": "A", "changetype": "DELETE"} in ops
 
 
+ROOT_NS_RRSET = {
+    "name": ".",
+    "type": "NS",
+    "ttl": 3600,
+    "records": [{"content": "a.root-servers.net.", "disabled": False}],
+}
+
+
 class FakePdns:
     def __init__(self, zone_exists: bool = True, fail: int | None = None) -> None:
         self.zone_exists = zone_exists
@@ -65,7 +73,7 @@ class FakePdns:
         if request.method == "GET" and request.url.path.endswith("/zones/=2E"):
             if not self.zone_exists:
                 return httpx.Response(404, json={"error": "Not Found"})
-            return httpx.Response(200, json={"rrsets": [{"name": ".", "type": "NS"}]})
+            return httpx.Response(200, json={"rrsets": [ROOT_NS_RRSET]})
         if request.method == "GET":
             return httpx.Response(200, json={"id": "localhost"})
         return httpx.Response(201 if request.method == "POST" else 204)
@@ -95,6 +103,49 @@ def test_ensure_root_zone_rewrites_existing() -> None:
         ("PUT", "/api/v1/servers/localhost/zones/=2E"),
         ("PATCH", "/api/v1/servers/localhost/zones/=2E"),
     ]
+    patched = {(r["name"], r["type"]) for r in fake.requests[-1][2]["rrsets"]}
+    assert patched == {(".", "SOA"), ("a.root-servers.net.", "A")}  # NS . already right
+
+
+def test_ensure_root_zone_keeps_serial_and_skips_when_in_sync() -> None:
+    in_sync = [
+        {k: v for k, v in r.items() if k != "changetype"} for r in root_rrsets("172.28.0.10")
+    ]
+    soa = in_sync[0]["records"][0]["content"].replace(" 1 1800", " 42 1800")
+    in_sync[0] = {**in_sync[0], "records": [{"content": soa}]}
+    methods: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        methods.append(request.method)
+        return httpx.Response(200, json={"soa_edit_api": "INCREASE", "rrsets": in_sync})
+
+    PdnsClient("http://pdns", "k", transport=httpx.MockTransport(handler)).ensure_root_zone(
+        "172.28.0.10"
+    )
+    assert methods == ["GET"]
+
+
+def test_ensure_root_zone_fixes_drift_keeping_serial() -> None:
+    drifted = [
+        {k: v for k, v in r.items() if k != "changetype"} for r in root_rrsets("172.28.0.99")
+    ]
+    drifted[0] = {**drifted[0], "records": [{"content": "a.root-servers.net. x. 42 1 1 1 3600"}]}
+    patches: list[Any] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.method == "GET":
+            return httpx.Response(200, json={"soa_edit_api": "INCREASE", "rrsets": drifted})
+        patches.append(json.loads(request.content)["rrsets"])
+        return httpx.Response(204)
+
+    PdnsClient("http://pdns", "k", transport=httpx.MockTransport(handler)).ensure_root_zone(
+        "172.28.0.10"
+    )
+    ops = {(r["name"], r["type"]): r for r in patches[0]}
+    assert set(ops) == {(".", "SOA"), ("a.root-servers.net.", "A")}
+    assert ops[(".", "SOA")]["records"][0]["content"] == (
+        "a.root-servers.net. hostmaster.sandbox.invalid. 42 1800 900 604800 5"
+    )
 
 
 def test_apply_patches_root_zone() -> None:
@@ -108,7 +159,7 @@ def test_apply_patches_root_zone() -> None:
 def test_zone_rrsets_and_ping() -> None:
     fake = FakePdns()
     c = client(fake)
-    assert c.zone_rrsets() == [{"name": ".", "type": "NS"}]
+    assert c.zone_rrsets() == [ROOT_NS_RRSET]
     assert c.ping()
     assert not client(FakePdns(fail=500)).ping()
 

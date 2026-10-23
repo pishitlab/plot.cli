@@ -1,6 +1,7 @@
 import threading
 from collections.abc import Callable
 from datetime import timedelta
+from typing import Any
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
@@ -29,6 +30,15 @@ class FakeRegistry:
         self.down = False
         self.calls = 0
 
+    def ensure_root_zone(self, root_ip: str) -> None:
+        pass
+
+    def zone_rrsets(self) -> list[dict[str, Any]]:
+        return []
+
+    def patch(self, rrsets: list[dict[str, Any]]) -> None:
+        pass
+
     def apply(self, domain: str, old: Snapshot, new: Snapshot) -> None:
         self.calls += 1
         if self.down:
@@ -54,7 +64,11 @@ def registry() -> FakeRegistry:
 @pytest.fixture
 def publisher(registry: FakeRegistry, clock: FakeClock) -> Publisher:
     return Publisher(
-        registry, FakeResolverControl(), clock, lambda session: load_settings(session, DEFAULTS)
+        registry,
+        FakeResolverControl(),
+        clock,
+        lambda session: load_settings(session, DEFAULTS),
+        root_ip="172.28.0.10",
     )
 
 
@@ -251,7 +265,7 @@ def test_R_PUB_08_flush_resolver_after_apply(
 ) -> None:
     resolver = FakeResolverControl()
     settings = DEFAULTS.model_copy(update={"flush_on_apply": flush_on_apply})
-    publisher = Publisher(registry, resolver, clock, lambda session: settings)
+    publisher = Publisher(registry, resolver, clock, lambda session: settings, "172.28.0.10")
     change(
         sessions,
         clock,
@@ -272,7 +286,7 @@ def test_R_PUB_08_flush_failure_does_not_undo_publish(
     policy: NamePolicy,
 ) -> None:
     resolver = FlakyResolver()
-    publisher = Publisher(registry, resolver, clock, lambda session: DEFAULTS)
+    publisher = Publisher(registry, resolver, clock, lambda session: DEFAULTS, "172.28.0.10")
     change(
         sessions,
         clock,

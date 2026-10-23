@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from plot.core.clock import Clock
 from plot.core.settings import RuntimeSettings
 from plot.dns.projector import Snapshot, project
+from plot.dns.reconcile import ZoneAccess, reconcile
 from plot.dns.scheduler import Backoff, RunResult, apply_due, propagation_delay, schedule_change
 from plot.services.ports import ResolverControl
 
@@ -18,7 +19,7 @@ log = logging.getLogger("plot.dns")
 SettingsLoader = Callable[[Session], RuntimeSettings]
 
 
-class Registry(Protocol):
+class Registry(ZoneAccess, Protocol):
     def apply(self, domain: str, old: Snapshot, new: Snapshot) -> None: ...
 
 
@@ -29,7 +30,9 @@ class Publisher:
         resolver: ResolverControl,
         clock: Clock,
         settings: SettingsLoader,
+        root_ip: str,
     ) -> None:
+        self.root_ip = root_ip
         self.registry = registry
         self.resolver = resolver
         self.clock = clock
@@ -47,18 +50,25 @@ class Publisher:
             )
 
     def reconcile(self, session: Session) -> list[str]:
-        raise NotImplementedError  # P3-T06
+        """R-PUB-07: repair zone drift from ``published_state`` and flush what was fixed."""
+        fixed = reconcile(session, self.registry, self.root_ip)
+        self._flush(session, fixed)
+        return fixed
 
     def apply_due(self, session: Session) -> RunResult:
         result = apply_due(session, self.clock.now(), self.registry.apply)
-        if result.applied and self.settings(session).flush_on_apply:
-            # R-PUB-08: resolvers must not keep serving the old delegation from cache.
-            for name in result.applied:
-                try:
-                    self.resolver.flush(name)
-                except Exception:
-                    log.warning("resolver flush failed for %s", name, exc_info=True)
+        self._flush(session, result.applied)
         return result
+
+    def _flush(self, session: Session, names: list[str]) -> None:
+        """R-PUB-08: resolvers must not keep serving the old delegation from cache."""
+        if not names or not self.settings(session).flush_on_apply:
+            return
+        for name in names:
+            try:
+                self.resolver.flush(name)
+            except Exception:
+                log.warning("resolver flush failed for %s", name, exc_info=True)
 
 
 class PublishWorker:

@@ -69,6 +69,32 @@ def root_rrsets(root_ip: str) -> list[dict[str, Any]]:
     ]
 
 
+def _root_drift(
+    current: list[dict[str, Any]], wanted: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """Root records that differ from ``wanted``. The SOA serial is ignored and kept, so it
+    only ever grows (pdns bumps it on each PATCH)."""
+    have = {(r["name"], r["type"]): r for r in current}
+    ops = []
+    for want in wanted:
+        got = have.get((want["name"], want["type"]))
+        contents = [rec["content"] for rec in want["records"]]
+        if got is not None and want["type"] == "SOA":
+            fields = got["records"][0]["content"].split() if got["records"] else []
+            if len(fields) == 7:
+                serial_kept = contents[0].split()
+                serial_kept[2] = fields[2]
+                contents = [" ".join(serial_kept)]
+        same = (
+            got is not None
+            and got["ttl"] == want["ttl"]
+            and sorted(r["content"] for r in got["records"]) == sorted(contents)
+        )
+        if not same:
+            ops.append(_rrset(want["name"], want["type"], want["ttl"], contents))
+    return ops
+
+
 class PdnsClient:
     def __init__(
         self,
@@ -114,8 +140,10 @@ class PdnsClient:
                 },
             )
             return
-        self._request("PUT", f"/zones/{ROOT_ZONE_ID}", json={"soa_edit_api": SOA_EDIT_API})
-        self.patch(root_rrsets(root_ip))
+        zone = response.json()
+        if zone.get("soa_edit_api") != SOA_EDIT_API:
+            self._request("PUT", f"/zones/{ROOT_ZONE_ID}", json={"soa_edit_api": SOA_EDIT_API})
+        self.patch(_root_drift(zone.get("rrsets", []), root_rrsets(root_ip)))
 
     def zone_rrsets(self) -> list[dict[str, Any]]:
         rrsets: list[dict[str, Any]] = self._request("GET", f"/zones/{ROOT_ZONE_ID}").json()[
