@@ -102,7 +102,7 @@ autonomy: continuous
   - [x] `plot --help` ครบและตรงกับ §9 → `test_command_tree_matches_spec_section_9` (เทียบกับ code block ของ §9 โดยตรง) + `plot --help` แสดง override, domain, ns, host, admin, seed
 
 ## P5 — สถานการณ์และตัวตรวจ (SPEC §10, §11)
-- [ ] P5-T01 `verifier/verify.py` + unit tests ทุกค่า enum (fake DNS)
+- [x] P5-T01 `verifier/verify.py` + unit tests ทุกค่า enum (fake DNS) — หลักฐาน: `src/plot/verifier/verify.py` (`verify()` ตัดสินตามลำดับ §11 → `Status` 7 ค่า + `evidence` parent_ns/resolver_ns/probes; `DnsProbe` Protocol), `src/plot/verifier/dns_probe.py` (`LiveDns` ด้วย dnspython: registry +norec, resolver, probe SOA AA=1 timeout 3 วิ retry 1, `PLOT_RESOLVER`/`PLOT_REGISTRY_ADDR`); `tests/unit/test_verify.py` ครบทุกค่า enum ด้วย fake DNS (`test_every_status_is_covered`), `tests/unit/test_dns_probe.py` (UDP DNS server ใน process); Assumption A-025 (ขัดกันใน SPEC, ต้องทบทวน), A-026; `make lint` ผ่าน; `make test` → 451 passed
 - [ ] P5-T02 `plot verify`
 - [ ] P5-T03 `scenarios/engine.py` (โหลด YAML, รัน step, ตรวจ expectation, cleanup `scn-*`)
 - [ ] P5-T04 scenario S01–S05
@@ -194,6 +194,8 @@ autonomy: continuous
 | A-022 | ปิด cache ของ pdns ทั้ง pdns-root และ demo-ns (`cache-ttl=0`, `query-cache-ttl=0`, `negquery-cache-ttl=0`, `zone-cache-refresh-interval=0`): integration test พบว่าค่าเริ่มต้นของ 4.9.17 ทำให้ NXDOMAIN ที่ถามก่อนจดค้างใน pdns ได้ถึง 60 วิ และ zone ที่สร้างด้วย `pdnsutil` ไม่เห็นได้ถึง 300 วิ ซึ่งขัดกับ D-007/§7.1 (negative caching สั้น); นอกจากนี้ publisher ไม่ schedule change ถ้าไม่มี pending ค้างและ snapshot เท่ากับที่ publish อยู่ (ลด change ที่ไม่มีผล) | §2.6 | — |
 | A-023 | CLI: (ก) option ที่รับหลายค่า (`--ns`, `--ipv4`, `--ipv6`) ใช้ซ้ำ flag ต่อค่า เช่น `--ns a --ns b` (แบบ Typer); (ข) `plot domain hold/release` = เพิ่ม/ลบ `serverHold` (ตรงกับ S09); (ค) `--owner` ไม่ส่ง = `cli` (API บังคับ owner); (ง) `plot domain list` ดึงทุกหน้าตาม `next_cursor`; (จ) API ติดต่อไม่ได้ → exit 1 `CONNECTION_ERROR: ...`; (ฉ) `--json` เป็น option ของแต่ละคำสั่ง (`plot domain info x --json`) | §2.6 | — |
 | A-024 | `plot admin settings` ไม่ใส่ option = แสดงค่า (GET), ใส่ `--delay/--ttl` = เปลี่ยนเฉพาะค่านั้น (PUT); `plot admin reset` ต้องมี `--prefix` หรือ `--all` อย่างใดอย่างหนึ่ง ตรวจที่ CLI ก่อน (ผิด → exit 2); `plot override --delay/--ttl` รับวินาที หรือ `none` (ไม่สนตัวพิมพ์) ค่าอื่น → exit 2 | §2.6 | — |
+| A-025 | **ต้องให้ผู้ใช้ทบทวน** — §10 กับ §11 ขัดกัน: S03 ต้องการ "NS query = NXDOMAIN" แต่ verifier = `NOT_DELEGATED`, ขณะที่ S12 (ไม่เคยจด) = `NXDOMAIN`; ทาง DNS ทั้งสองกรณีตอบ NXDOMAIN เหมือนกันทุกประการ (zone `.` มีแค่ NS+glue ตาม §7.1) จึงแยกด้วย DNS ไม่ได้. ทางที่เลือก (ไม่แตะ §7.1/API/Decision): verifier ตัดสินด้วย DNS ตาม §11 ทุกขั้น แต่เมื่อ registry view = NXDOMAIN จะถาม registrar API `GET /domains/check` (ผ่าน `PLOT_API_URL/PLOT_API_KEY` ที่ CLI มีอยู่แล้ว) ว่าจดอยู่หรือไม่: จด → `NOT_DELEGATED`, ไม่จด/ไม่รู้ → `NXDOMAIN`. หมายเหตุสำหรับระบบ hosting จริง: ใช้แค่ DNS จะได้ `NXDOMAIN` ทั้งสองกรณี | §2.6 (ขัดกันในตัว SPEC) | ผู้ใช้ทบทวน |
+| A-026 | Verifier: (ก) `PARTIAL` = ชุด parent มี NS ที่คาดบางตัวแต่ไม่เท่ากับชุดคาด (รวมกรณีมีตัวเกิน); (ข) NS ผ่าน probe เมื่อ resolve ชื่อได้ ≥ 1 address และ**ทุก** address ตอบ SOA แบบ AA=1 + NOERROR; (ค) resolver timeout ขณะถาม NS ของโดเมน (เช่น lame) ไม่นับเป็น ERROR ถ้า resolver ยังตอบ `. SOA` ได้; (ง) probe ใช้ IPv4 (D-011) | §2.6 | — |
 
 ## Unverified (ต้องเคลียร์ก่อนจบ P8)
 | ID | เรื่อง | ทำไมยังไม่ตรวจ | วิธีตรวจ |
