@@ -49,6 +49,13 @@ def due_changes(session: Session, now: datetime) -> list[PendingChange]:
     return list(session.scalars(stmt))
 
 
+def has_pending(session: Session, domain_name: str) -> bool:
+    stmt = select(PendingChange.id).where(
+        PendingChange.domain_name == domain_name, PendingChange.applied_at.is_(None)
+    )
+    return session.scalars(stmt.limit(1)).first() is not None
+
+
 def published_snapshot(session: Session, domain_name: str) -> Snapshot:
     state = session.get(PublishedState, domain_name)
     return state.snapshot if state is not None else None

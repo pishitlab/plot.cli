@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from plot.core.clock import FakeClock
 from plot.core.settings import RuntimeSettings
 from plot.core.tlds import NamePolicy
-from plot.db.models import Base
+from plot.db.models import Base, PendingChange
 from plot.db.session import make_engine, make_session_factory
 from plot.dns.projector import Snapshot
 from plot.dns.publisher import Publisher, PublishWorker
@@ -298,3 +298,32 @@ def test_R_PUB_08_flush_failure_does_not_undo_publish(
         assert publisher.apply_due(session).applied == ["shop.com"]
     assert resolver.flushed == ["shop.com"]
     assert "shop.com" in registry.zone
+
+
+def test_unchanged_snapshot_is_not_scheduled(
+    sessions: sessionmaker[Session],
+    clock: FakeClock,
+    publisher: Publisher,
+    policy: NamePolicy,
+) -> None:
+    change(sessions, clock, publisher, policy, lambda d: d.register("shop.com", "a"))
+    change(
+        sessions,
+        clock,
+        publisher,
+        policy,
+        lambda d: d.set_overrides("shop.com", propagation_delay=5),
+    )
+    with sessions.begin() as session:
+        assert session.query(PendingChange).count() == 0  # no delegation before or after
+    change(sessions, clock, publisher, policy, lambda d: d.set_nameservers("shop.com", NS_PAIR))
+    change(
+        sessions,
+        clock,
+        publisher,
+        policy,
+        lambda d: d.update_status("shop.com", add=["clientHold"]),
+    )
+    with sessions.begin() as session:
+        # with a change pending, every later change is scheduled so the newest wins (R-PUB-06)
+        assert session.query(PendingChange).count() == 2

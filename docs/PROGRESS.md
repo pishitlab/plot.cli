@@ -12,14 +12,14 @@ autonomy: continuous
 | P0 | วางรากฐาน | 5% | 5% | ✅ เสร็จ |
 | P1 | แกนโดเมน | 15% | 20% | ✅ เสร็จ |
 | P2 | Registrar API | 15% | 35% | ✅ เสร็จ |
-| P3 | DNS จริง | 20% | 55% | 🟦 กำลังทำ |
-| P4 | CLI | 10% | 65% | ⬜ |
+| P3 | DNS จริง | 20% | 55% | ⚠️ gate ผ่านใน container ของ AI, รอผู้ใช้ยืนยันบน dev box |
+| P4 | CLI | 10% | 65% | 🟦 กำลังทำ |
 | P5 | สถานการณ์และตัวตรวจ | 13% | 78% | ⬜ |
 | P6 | Web UI | 10% | 88% | ⬜ |
 | P7 | โมดูลเสริม | 6% | 94% | ⬜ |
 | P8 | ปิดงาน | 6% | 100% | ⬜ |
 
-ความคืบหน้ารวม: **35%** (คำนวณจากน้ำหนัก phase × สัดส่วน task ที่ติ๊กแล้วใน phase นั้น; phase จะนับเต็มเมื่อ Exit Gate ผ่านและผู้ใช้อนุมัติ)
+ความคืบหน้ารวม: **55%** (P3 นับเมื่อ gate ผ่านในสภาพแวดล้อมของ AI; ผลบน dev box ยังรอผู้ใช้) (คำนวณจากน้ำหนัก phase × สัดส่วน task ที่ติ๊กแล้วใน phase นั้น; phase จะนับเต็มเมื่อ Exit Gate ผ่านและผู้ใช้อนุมัติ)
 
 สัญลักษณ์: ⬜ ยังไม่เริ่ม · 🟦 กำลังทำ · ✅ เสร็จ (มีหลักฐาน) · ⚠️ เสร็จแต่มี `NOT RUN` ค้าง
 
@@ -82,8 +82,12 @@ autonomy: continuous
 - [x] P3-T07 `deploy/`: compose, unbound conf/hints template, pdns-root conf, Dockerfile ของ registrar — pin version ของ image ทุกตัวแล้วบันทึกใน "Pinned versions" — หลักฐาน: `deploy/docker-compose.yml` (unbound, pdns-root, registrar, demo-ns1/2 บน network `${SUBNET}` IP ตาม §4.1; publish 53/5300/8080 ที่ `BIND_ADDR` เท่านั้น; 8081/8953 ไม่ publish), `deploy/unbound/*`, `deploy/pdns-root/pdns.conf`, `deploy/demo-ns/pdns.conf`, `deploy/registrar/Dockerfile` + `requirements.lock`, composition root `src/plot/api/main.py`, `make up/down/test-integration`; pin version ทุกตัวในตาราง "Pinned versions"; รัน stack จริง (BIND_ADDR=127.0.0.1): ขึ้นครบ 5 service, `/api/v1/health` → `{"status":"ok","db":"ok","pdns":"ok","unbound":"ok"}`, จด `shop.com` ผ่าน API → registry view `dig @127.0.0.1 -p 5300` เห็น NS; พบและแก้บั๊ก `ping` ของ pdns (trailing slash → 404); `tests/unit/test_registrar_main.py`; Assumption A-020; `make lint` ผ่าน; `make test` → 371 passed
 - [x] P3-T08 `plot seed provider` (หรือ API ภายใน) + `demo-ns` ขั้นต่ำให้ `myhost.net` resolve ได้ — หลักฐาน: `src/plot/services/seed.py` (`seed_provider`: จดโดเมน seed + host ns1/ns2 พร้อม glue + ตั้ง NS), `src/plot/dns/demo_ns.py` (`DemoNs.ensure_zone` บน demo-ns ทุกตัว), `src/plot/cli/main.py` (`plot seed provider [--domain] [--ns1-ip] [--ns2-ip] [--json]`); รันจริงบน stack: `docker compose exec registrar plot seed provider` → `myhost.net: ns1.myhost.net, ns2.myhost.net (demo-ns zones: 2)` แล้ว resolve ผ่าน unbound: `ns1.myhost.net A 172.28.0.31`, `ns2.myhost.net A 172.28.0.32`, `myhost.net NS ns1/ns2`; `tests/unit/test_seed.py` 10 ตัว; Assumption A-021; `make lint` ผ่าน; `make test` → 381 passed
 - [x] P3-T09 `/health` ตรวจ db/pdns/unbound — หลักฐาน: `/api/v1/health` ตรวจ db (`SELECT 1`), pdns (`PdnsClient.ping` + publish worker ไม่ค้างใน backoff), unbound (`UnboundControl.ping` = `status`) — ผูกใน `src/plot/api/main.py` ตั้งแต่ P3-T07; ทดสอบจริงบน stack: ปกติ → `{"status":"ok","db":"ok","pdns":"ok","unbound":"ok"}`; `docker compose stop pdns-root` → `{"status":"degraded",...,"pdns":"down"}` และ `POST /domains` ยังได้ 201 พร้อม `dns_visible.pending` (R-PUB-09); start pdns กลับ → health ok ภายใน 2 วิ และ `dns_visible.nameservers` = ชุดใหม่, `pending: []`; unit tests ใน `tests/api/test_health_auth.py`, `tests/unit/test_registrar_main.py`; `make test` → 381 passed
-- [ ] P3-T10 integration tests ตาม Exit Gate P3 (`make test-integration`)
-- **Exit Gate P3:** [ ] ผ่านครบตาม SPEC §16 P3 · [ ] ผู้ใช้ยืนยันผล integration บน dev box · [ ] ผู้ใช้อนุมัติ
+- [x] P3-T10 integration tests ตาม Exit Gate P3 (`make test-integration`) — หลักฐาน: `tests/integration/` (`conftest.py`: อ่าน env file เดียวกับ `make up`, ใช้ `docker compose` + dnspython + httpx, `wait_for` polling ≤ 30 วิ ไม่มี sleep ตายตัว; `test_dns_stack.py` 24 test: service ครบ+health, ทุก option ของ §7.2 ผ่าน `unbound-control get_option`/conf ที่รันอยู่, passthrough, NXDOMAIN, delegation ผ่าน resolver, glue 192.168.x.x, delay, flush, reconcile); `make test-integration ENV_FILE=<env>` → **24 passed** (2 รอบ); รอบแรก 6 failed → พบ/แก้: cache ของ pdns (A-022), test เดา `get_option control-use-cert` ผิด, รูปแบบ `pdnsutil list-zone`, pending ซ้ำซ้อน; `make lint` ผ่าน; `make test` → 382 passed
+- **Exit Gate P3:** [x] ผ่านครบตาม SPEC §16 P3 (ใน container ของ AI) · [ ] ผู้ใช้ยืนยันผล integration บน dev box · [ ] ผู้ใช้อนุมัติ
+  - [x] projector ทดสอบ R-PUB-01..07 ครบ (unit, 100% branch) → `coverage report --include=*/plot/dns/projector.py --fail-under=100` = 100%; governance test ตรวจ R-PUB-01..09 มี test ครบ 9/9
+  - [x] `make up` ขึ้นครบทุก service และ `/health` = ok → `test_all_services_up_and_healthy` (5 service running, health ok ทุกส่วน)
+  - [x] integration: จด+ตั้ง NS → resolver NS ถูก, glue `192.168.250.31` resolve ได้, NXDOMAIN ก่อนจด, delay 5 วิ วัดได้ในช่วง 4–8 วิ, flush (ทั้ง `flush_on_apply=false` + `admin/resolver/flush` และ `true`), reconcile หลัง restart ทั้ง stack และหลังลบ RRset ใน pdns → `make test-integration` → **24 passed** (รัน 2 รอบติด)
+  - [x] ถ้ารัน docker ไม่ได้: N/A — รันได้ใน container ของ AI (BIND_ADDR=127.0.0.1) แต่ **ยังไม่ได้รันบน `192.168.1.175`** → รอผู้ใช้ยืนยันตาม §2.9
 
 ## P4 — CLI (SPEC §9)
 - [ ] P4-T01 `cli/main.py` + config (`PLOT_API_URL`, `PLOT_API_KEY`) + client + `--json`
@@ -184,14 +188,15 @@ autonomy: continuous
 | A-019 | Reconcile (R-PUB-07): ความจริงคือ `published_state`; RRset ใน zone `.` ที่เป็นของโดเมน = NS ที่ชื่อโดเมน + A/AAAA ที่ชื่ออยู่ใต้โดเมน; ต่างจากที่ควร (ไม่สนลำดับ record) → เขียนใหม่; NS/A/AAAA ที่ไม่มีโดเมนใดใน `published_state` เป็นเจ้าของ (ยกเว้น `.` และ `a.root-servers.net`) → ลบ; `pending_changes` ที่ค้างไม่ต้องทำอะไรเพิ่มเพราะ `apply_at` เป็นเวลาสัมบูรณ์ worker จะ apply ทันทีที่เริ่ม; `ensure_root_zone` เขียนเฉพาะ record ของ root ที่ต่างจากที่ควร และคง serial เดิม (serial ไม่ถอยหลัง) | §2.6 | P3-T10 |
 | A-020 | Deploy: (ก) env ภายในเพิ่มจาก §13.1 (มีค่าเริ่มต้นตาม compose): `PDNS_API_URL`, `UNBOUND_CONTROL_HOST/PORT`, `CONFIG_DIR`, `DEMO_NS_API_URLS` และ IP ของ container (`UNBOUND_IP` ฯลฯ ใน `.env.example` แบบ optional); (ข) ข้อมูล pdns (root + demo-ns) อยู่ใน named volume เพราะสร้างใหม่ได้จาก `registrar.db` ด้วย reconcile — backup ที่จำเป็นคือ `DATA_DIR` (registrar.db); (ค) container ภายในฟังที่ 0.0.0.0 ภายใน network แต่ publish เฉพาะ `BIND_ADDR` (N10); (ง) registrar รัน reconcile ก่อน publish รอบแรก (retry แบบ backoff ถ้า pdns ยังไม่ขึ้น) และ lifecycle job ทุก 5 วิใน worker เดียวกัน; (จ) `/health.pdns` = ping API ได้ **และ** publish worker ไม่ได้ค้างอยู่ใน backoff | §2.6 | P8-T02 (RUNBOOK) |
 | A-021 | `plot seed provider` ใช้ "API ภายใน" (P3-T08 อนุญาต) ไม่ใช่ HTTP: รันใน container registrar (`docker compose exec registrar plot seed provider ...`) เรียก services บน DB โดยตรง แล้วเขียน zone ของ provider ลง demo-ns1/2 ผ่าน pdns API ภายใน (`DEMO_NS_API_URLS`); ค่าเริ่มต้น `--ns1-ip 172.28.0.31 --ns2-ip 172.28.0.32` (demo-ns, A-001); idempotent; ถ้า `nsN.<domain>` มีอยู่แล้วเป็น external host (ถูกใช้เป็น NS ก่อน seed) → `HOST_ADDR_FORBIDDEN` พร้อมบอกว่าใครใช้ (ไม่ re-classify ตาม §1.3); console script `plot` เริ่มมีใน P3-T08 (P4 ขยาย) | §2.6 | P4 |
+| A-022 | ปิด cache ของ pdns ทั้ง pdns-root และ demo-ns (`cache-ttl=0`, `query-cache-ttl=0`, `negquery-cache-ttl=0`, `zone-cache-refresh-interval=0`): integration test พบว่าค่าเริ่มต้นของ 4.9.17 ทำให้ NXDOMAIN ที่ถามก่อนจดค้างใน pdns ได้ถึง 60 วิ และ zone ที่สร้างด้วย `pdnsutil` ไม่เห็นได้ถึง 300 วิ ซึ่งขัดกับ D-007/§7.1 (negative caching สั้น); นอกจากนี้ publisher ไม่ schedule change ถ้าไม่มี pending ค้างและ snapshot เท่ากับที่ publish อยู่ (ลด change ที่ไม่มีผล) | §2.6 | — |
 
 ## Unverified (ต้องเคลียร์ก่อนจบ P8)
 | ID | เรื่อง | ทำไมยังไม่ตรวจ | วิธีตรวจ |
 |---|---|---|---|
 | U-001 | ~~zone id ของ root ใน pdns API (`=2E`?)~~ **ตรวจแล้ว 2026-10-23** | — | รัน `powerdns/pdns-auth-49:4.9.17` จริง: `POST /zones {name: "."}` → 201, id = `=2E`; `GET /zones/=2E` → 200, `GET /zones/.` → 404 |
 | U-002 | ~~ชื่อ option `soa-edit-api` ที่เหมาะกับ version ที่ pin~~ **ตรวจแล้ว 2026-10-23** | — | บน 4.9.17: zone ที่ตั้ง `soa_edit_api=INCEPTION-INCREMENT` → PATCH แล้ว serial ยัง 1→1; ตั้ง `INCREASE` → 1→2 จึงใช้ `INCREASE` ("หรือเทียบเท่า" ตาม §7.1) |
-| U-003 | Unbound ยอมรับ referral ที่ข้ามระดับจาก root (D-005) และ `qname-minimisation: no` ตามที่คาด | ยังไม่มีการรัน | integration test ใน P3-T10 |
-| U-004 | glue ที่เป็น private IP ผ่านตัวกรองของ Unbound เมื่อไม่มี `private-address` | ยังไม่มีการรัน | integration test ใน P3-T10 |
+| U-003 | ~~Unbound ยอมรับ referral ที่ข้ามระดับจาก root (D-005) และ `qname-minimisation: no` ตามที่คาด~~ **ตรวจแล้ว 2026-10-23 (ใน container ของ AI)** | — | `test_register_then_delegation_visible_through_resolver`, `test_child_nameservers_with_192_168_glue_resolve` ผ่าน: root ส่ง referral ตรงไปที่ `it-xxxx.com` แล้ว unbound 1.26.1 resolve ได้; `get_option qname-minimisation` = `no` |
+| U-004 | ~~glue ที่เป็น private IP ผ่านตัวกรองของ Unbound เมื่อไม่มี `private-address`~~ **ตรวจแล้ว 2026-10-23 (ใน container ของ AI)** | — | `test_child_nameservers_with_192_168_glue_resolve`: glue `192.168.250.31` บน network ทดสอบ `192.168.250.0/24` → registry view มี glue และ `www` resolve ผ่าน unbound ได้; `get_option private-address` = ว่าง |
 
 ## Spec Change Requests
 | ID | ปัญหา | หลักฐาน | ข้อเสนอ (แนะนำ) | ผลกระทบ | สถานะ |
@@ -210,3 +215,4 @@ _ยังไม่มี_
 | 2026-10-23 | — | ผู้ใช้สั่ง "ทำต่อเนื่องให้ อัตโนมัติ" → AI เปลี่ยน `autonomy: continuous` ตามคำสั่ง และถือเป็นการอนุมัติ Exit Gate P1 | ข้อความผู้ใช้ใน chat |
 | 2026-10-23 | P2-T01..T09 | Registrar API ครบตาม §8 (auth, envelope, request_id, domains, hosts, ns/status/overrides, history, admin, OpenAPI snapshot, contract tests); เพิ่ม `domains.seed` (migration 0002); Assumptions A-012..A-016 | `make lint` ผ่าน; `make test` → 322 passed |
 | 2026-10-23 | P3-T07 (หมายเหตุสภาพแวดล้อม) | ใน cloud container ของ AI, pip ใน `docker build` ไม่เชื่อ CA ของ egress proxy → build registrar ด้วยสำเนา Dockerfile ใน scratchpad ที่เพิ่ม 2 บรรทัด (`COPY` CA + `PIP_CERT`) เท่านั้น ไม่ได้แก้ `deploy/registrar/Dockerfile` ใน repo; บน `192.168.1.175` ไม่ต้องใช้ | `docker build` สำเร็จ, compose ขึ้นครบ 5 service |
+| 2026-10-23 | P3-T01..T10 | DNS จริง: projector, scheduler, pdns client, publisher+worker, unbound control, reconcile, compose ครบ 5 service, seed provider, health, integration tests; ปิด U-001..U-004; Assumptions A-017..A-022 | `make test` → 382 passed; `make test-integration` → 24 passed ×2 |

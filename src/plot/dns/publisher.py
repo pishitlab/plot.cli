@@ -11,7 +11,15 @@ from plot.core.clock import Clock
 from plot.core.settings import RuntimeSettings
 from plot.dns.projector import Snapshot, project
 from plot.dns.reconcile import ZoneAccess, reconcile
-from plot.dns.scheduler import Backoff, RunResult, apply_due, propagation_delay, schedule_change
+from plot.dns.scheduler import (
+    Backoff,
+    RunResult,
+    apply_due,
+    has_pending,
+    propagation_delay,
+    published_snapshot,
+    schedule_change,
+)
 from plot.services.ports import ResolverControl
 
 log = logging.getLogger("plot.dns")
@@ -45,6 +53,8 @@ class Publisher:
         now = self.clock.now()
         for name in sorted(domain_names):
             snapshot = project(session, name, now, settings)
+            if not has_pending(session, name) and snapshot == published_snapshot(session, name):
+                continue  # nothing would change in DNS
             schedule_change(
                 session, name, snapshot, now, propagation_delay(session, name, settings)
             )

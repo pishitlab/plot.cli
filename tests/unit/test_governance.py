@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[2]
 SRC = ROOT / "src" / "plot"
 TESTS = ROOT / "tests"
 
-RULE_FAMILIES = ("NAME", "DOM", "HOST", "NS")
+RULE_FAMILIES = ("NAME", "DOM", "HOST", "NS", "PUB")
 # Packages services must not depend on: implementations are injected via ports.
 FORBIDDEN_FOR_SERVICES = ("plot.api", "plot.cli", "plot.web", "plot.dns", "plot.whois")
 # §4.4 allows stdlib + pydantic in core; A-003 adds the approved config readers.
@@ -43,7 +43,7 @@ def imported_modules(path: Path) -> set[str]:
 
 def test_spec_lists_all_rule_families() -> None:
     codes = spec_rule_codes()
-    for family, count in {"NAME": 5, "DOM": 7, "HOST": 7, "NS": 6}.items():
+    for family, count in {"NAME": 5, "DOM": 7, "HOST": 7, "NS": 6, "PUB": 9}.items():
         assert len([c for c in codes if c.startswith(f"R-{family}-")]) == count, family
 
 
