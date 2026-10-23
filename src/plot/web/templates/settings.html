@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% block content %}
+<h1>Settings</h1>
+<section class="cols">
+  <form method="post" action="{{ root }}settings" class="card">
+    <h2>Runtime settings</h2>
+    <label>Propagation delay (s) <input name="propagation_delay" type="number" min="0" value="{{ s.propagation_delay }}"></label>
+    <label>NS / glue TTL (s) <input name="ns_ttl" type="number" min="0" value="{{ s.ns_ttl }}"></label>
+    <label>Default registration years <input name="default_years" type="number" min="1" max="10" value="{{ s.default_years }}"></label>
+    <label>Expiry grace days <input name="expiry_grace_days" type="number" min="0" value="{{ s.expiry_grace_days }}"></label>
+    <label><input type="checkbox" name="flush_on_apply" {% if s.flush_on_apply %}checked{% endif %} style="display:inline;width:auto"> Flush resolver after each change is applied</label>
+    <button>Save</button>
+  </form>
+  <form method="post" action="{{ root }}settings/flush" class="card">
+    <h2>Resolver cache</h2>
+    <label>Domain (empty = everything) <input name="domain" placeholder="shop.com"></label>
+    <button class="secondary">Flush</button>
+  </form>
+  <form method="post" action="{{ root }}settings/reset" class="card" hx-confirm="Remove the selected test data?">
+    <h2>Reset test data</h2>
+    <p class="muted">Seed domains (e.g. myhost.net) are kept.</p>
+    <label>Domains starting with <input name="prefix" placeholder="scn-"></label>
+    <label><input type="checkbox" name="all" style="display:inline;width:auto"> or everything</label>
+    <button class="danger">Reset</button>
+  </form>
+</section>
+{% endblock %}

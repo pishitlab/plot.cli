@@ -287,6 +287,51 @@ def create_web_app(client_for_key: ClientFactory) -> FastAPI:
             notice=f"deleted {name}",
         )
 
+    # --- settings -----------------------------------------------------------------
+
+    @web.get("/settings", response_class=HTMLResponse, name="settings")
+    async def settings(request: Request) -> Response:
+        current = await fetch(request, lambda api: api.get("/admin/settings"))
+        return page(request, "settings.html", s=current)
+
+    @web.post("/settings")
+    async def save_settings(request: Request) -> Response:
+        data = await form(request)
+        body: dict[str, Any] = {
+            key: views.as_int(first(data, key))
+            for key in ("propagation_delay", "ns_ttl", "default_years", "expiry_grace_days")
+            if first(data, key)
+        }
+        body["flush_on_apply"] = first(data, "flush_on_apply") == "on"
+        return await act(
+            request,
+            lambda api: api.put("/admin/settings", body),
+            then="settings",
+            notice="settings saved",
+        )
+
+    @web.post("/settings/flush")
+    async def flush(request: Request) -> Response:
+        domain = first(await form(request), "domain") or None
+        return await act(
+            request,
+            lambda api: api.post("/admin/resolver/flush", {"domain": domain}),
+            then="settings",
+            notice=f"flushed {domain or 'the whole resolver cache'}",
+        )
+
+    @web.post("/settings/reset")
+    async def reset(request: Request) -> Response:
+        data = await form(request)
+        prefix = first(data, "prefix")
+        body: dict[str, Any] = {"prefix": prefix} if prefix else {"all": first(data, "all") == "on"}
+        return await act(
+            request,
+            lambda api: api.post("/admin/reset", body),
+            then="settings",
+            notice="reset done",
+        )
+
     return web
 
 
