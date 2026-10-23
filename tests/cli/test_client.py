@@ -71,3 +71,31 @@ def test_help_and_usage_error_exit_codes() -> None:
     runner = CliRunner()
     assert runner.invoke(app, ["--help"]).exit_code == 0
     assert runner.invoke(app, ["no-such-command"]).exit_code == 2
+
+
+def test_is_registered() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        name = request.url.params["name"]
+        if name == "down.com":
+            return httpx.Response(500, text="boom")
+        reasons = {"shop.com": "DOMAIN_EXISTS", "github.com": "RESERVED_NAME"}
+        reason = reasons.get(name)
+        body = {"name": name, "available": reason is None, **({"reason": reason} if reason else {})}
+        return httpx.Response(200, json=body)
+
+    client = mock(handler)
+    assert client.is_registered("shop.com") is True
+    assert client.is_registered("free.com") is False
+    assert client.is_registered("github.com") is False
+    assert client.is_registered("down.com") is None
+
+
+def test_call_returns_status_and_body() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST":
+            return httpx.Response(201, json={"ok": True})
+        return httpx.Response(204)
+
+    client = mock(handler)
+    assert client.call("POST", "/domains", json={}) == (201, {"ok": True})
+    assert client.call("DELETE", "/domains/x.com") == (204, None)

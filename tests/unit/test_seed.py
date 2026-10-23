@@ -164,3 +164,25 @@ def test_cli_seed_provider_errors(registrar_env: Path, monkeypatch: pytest.Monke
     result = runner.invoke(app, ["seed", "provider"])
     assert result.exit_code == 1
     assert "DEMO_NS_ERROR" in result.output
+
+
+def test_demo_ns_targets_named_instances_and_deletes_zones() -> None:
+    fake = FakeDemoApi()
+    demo = DemoNs(
+        ["http://demo-ns1:8081", "http://demo-ns2:8081"], "k", transport=httpx.MockTransport(fake)
+    )
+    demo.ensure_zone("shop.com", ["ns1.myhost.net"], {}, on=["demo-ns2"])
+    assert {str(r[1]) for r in fake.requests} == {
+        "/api/v1/servers/localhost/zones/shop.com.",
+        "/api/v1/servers/localhost/zones",
+    }
+    assert len(fake.requests) == 3  # GET, POST, PATCH on demo-ns2 only
+    with pytest.raises(DemoNsError, match="unknown demo-ns"):
+        demo.ensure_zone("shop.com", ["ns1.myhost.net"], {}, on=["demo-ns9"])
+    fake.requests.clear()
+    demo.delete_zone("shop.com")
+    assert [m for m, _, _ in fake.requests] == ["DELETE", "DELETE"]
+    with pytest.raises(DemoNsError, match="500"):
+        DemoNs(
+            ["http://ns1:8081"], "k", transport=httpx.MockTransport(FakeDemoApi(fail=True))
+        ).delete_zone("x.com")

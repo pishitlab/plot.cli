@@ -29,6 +29,25 @@ class ApiClient:
         key = os.environ.get("PLOT_API_KEY", "")
         return cls(httpx.Client(base_url=base, headers={"X-API-Key": key}, timeout=30))
 
+    def call(
+        self,
+        method: str,
+        path: str,
+        *,
+        json: Any = None,
+        params: dict[str, Any] | None = None,
+    ) -> tuple[int, Any]:
+        """Raw call: (HTTP status, parsed body or None). Raises only when unreachable."""
+        try:
+            response = self.http.request(method, API_PREFIX + path, json=json, params=params)
+        except httpx.HTTPError as err:
+            raise ApiError("CONNECTION_ERROR", f"cannot reach the registrar API: {err}") from err
+        try:
+            body = response.json() if response.content else None
+        except ValueError:
+            body = None
+        return response.status_code, body
+
     def request(
         self,
         method: str,
@@ -37,22 +56,22 @@ class ApiClient:
         json: Any = None,
         params: dict[str, Any] | None = None,
     ) -> Any:
-        try:
-            response = self.http.request(method, API_PREFIX + path, json=json, params=params)
-        except httpx.HTTPError as err:
-            raise ApiError("CONNECTION_ERROR", f"cannot reach the registrar API: {err}") from err
-        if response.status_code == 204:
-            return None
-        try:
-            body = response.json()
-        except ValueError:
-            body = None
-        if response.status_code >= 400:
+        """Body of a successful call; an error envelope is raised as ``ApiError``."""
+        status, body = self.call(method, path, json=json, params=params)
+        if status >= 400:
             error = body.get("error") if isinstance(body, dict) else None
             if isinstance(error, dict):
-                raise ApiError(error["code"], error["message"], response.status_code)
-            raise ApiError("HTTP_ERROR", f"HTTP {response.status_code}", response.status_code)
+                raise ApiError(error["code"], error["message"], status)
+            raise ApiError("HTTP_ERROR", f"HTTP {status}", status)
         return body
+
+    def is_registered(self, name: str) -> bool | None:
+        """Whether the registry holds ``name``; ``None`` when the API cannot say (A-025)."""
+        try:
+            check = self.get("/domains/check", name=name)
+        except ApiError:
+            return None
+        return bool(not check["available"] and check.get("reason") == "DOMAIN_EXISTS")
 
     def get(self, path: str, **params: Any) -> Any:
         return self.request("GET", path, params={k: v for k, v in params.items() if v is not None})

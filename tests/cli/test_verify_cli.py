@@ -55,16 +55,3 @@ def test_usage(plot: Plot, fake_dns: FakeDns) -> None:
     assert plot("verify", "shop.com", "ns1.myhost.net").exit_code == 2  # --expect missing
     assert plot("verify", "shop.com", "--expect").exit_code == 2  # no nameservers
     assert plot("verify").exit_code == 2
-
-
-def test_lookup_unknown_when_api_unreachable() -> None:
-    from plot.cli.client import ApiClient, ApiError
-
-    class Down(ApiClient):
-        def __init__(self) -> None:
-            pass
-
-        def get(self, path: str, **params: object) -> object:
-            raise ApiError("CONNECTION_ERROR", "down")
-
-    assert verify_cmd.registration_lookup(Down())("shop.com") is None

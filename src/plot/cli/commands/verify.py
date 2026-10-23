@@ -6,26 +6,12 @@ from typing import Annotated, Any
 import typer
 
 from plot.cli import output
-from plot.cli.client import ApiClient, ApiError
 from plot.cli.output import JsonOption, emit
 from plot.verifier.dns_probe import LiveDns
 from plot.verifier.verify import DnsProbe, verify
 
 # Replaced in tests with fake DNS.
 dns_factory: Callable[[], DnsProbe] = LiveDns.from_env
-
-
-def registration_lookup(client: ApiClient) -> Callable[[str], bool | None]:
-    """A-025: only the registry database knows a registered name without delegation."""
-
-    def is_registered(name: str) -> bool | None:
-        try:
-            check = client.get("/domains/check", name=name)
-        except ApiError:
-            return None
-        return bool(not check["available"] and check.get("reason") == "DOMAIN_EXISTS")
-
-    return is_registered
 
 
 def verify_command(
@@ -41,8 +27,7 @@ def verify_command(
     """Has DOMAIN been delegated to exactly the expected nameservers, and do they answer?"""
     if not expect:
         raise typer.BadParameter("list the expected nameservers after --expect")
-    lookup = registration_lookup(output.client_factory())
-    result = verify(domain, nameservers, dns_factory(), lookup)
+    result = verify(domain, nameservers, dns_factory(), output.client_factory().is_registered)
     emit(result.to_dict(), as_json, _render)
 
 
