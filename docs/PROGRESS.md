@@ -17,9 +17,9 @@ autonomy: continuous
 | P5 | สถานการณ์และตัวตรวจ | 13% | 78% | ✅ เสร็จ (รันใน container ของ AI) |
 | P6 | Web UI | 10% | 88% | ✅ เสร็จ |
 | P7 | โมดูลเสริม | 6% | 94% | ✅ ไม่มีโมดูลที่เลือก (ค่าเริ่มต้น) |
-| P8 | ปิดงาน | 6% | 100% | 🟦 กำลังทำ |
+| P8 | ปิดงาน | 6% | 100% | ⚠️ T01–T03 เสร็จ, T04–T05 รอผู้ใช้ |
 
-ความคืบหน้ารวม: **94%** (P3 นับเมื่อ gate ผ่านในสภาพแวดล้อมของ AI; ผลบน dev box ยังรอผู้ใช้) (คำนวณจากน้ำหนัก phase × สัดส่วน task ที่ติ๊กแล้วใน phase นั้น; phase จะนับเต็มเมื่อ Exit Gate ผ่านและผู้ใช้อนุมัติ)
+ความคืบหน้ารวม: **97%** (P8 ทำได้ 3/5 task; ที่เหลือต้องให้ผู้ใช้ทำ/สั่ง) (P3 นับเมื่อ gate ผ่านในสภาพแวดล้อมของ AI; ผลบน dev box ยังรอผู้ใช้) (คำนวณจากน้ำหนัก phase × สัดส่วน task ที่ติ๊กแล้วใน phase นั้น; phase จะนับเต็มเมื่อ Exit Gate ผ่านและผู้ใช้อนุมัติ)
 
 สัญลักษณ์: ⬜ ยังไม่เริ่ม · 🟦 กำลังทำ · ✅ เสร็จ (มีหลักฐาน) · ⚠️ เสร็จแต่มี `NOT RUN` ค้าง
 
@@ -142,9 +142,23 @@ autonomy: continuous
 - [x] P8-T01 `README.md` ฉบับเต็ม — หลักฐาน: `README.md` ฉบับเต็ม: วัตถุประสงค์ + คำเตือน dev LAN only (§15), ลิงก์ SPEC/RUNBOOK/PROGRESS, แผนผังส่วนประกอบ, ติดตั้งแบบสรุป, การใช้ CLI (env, exit code, คำสั่งที่ต้องรันใน container), Web UI, verifier, scenario, ตาราง config (รวม env ที่เพิ่มตาม A-020), การทดสอบ; `.env.example` เพิ่ม `LAME_IP` (optional); `make lint` ผ่าน (ไฟล์เอกสาร ไม่มีผลต่อ test)
 - [x] P8-T02 `docs/RUNBOOK.md` (ติดตั้ง .175, DNS client, systemd-resolved, troubleshooting, backup) — หลักฐาน: `docs/RUNBOOK.md`: เตรียมเครื่อง (Docker ตามเอกสารทางการ, ปิด `DNSStubListener` + แก้ `/etc/resolv.conf`, firewall เฉพาะ LAN), ติดตั้ง/เปิดระบบ, seed provider (demo-ns หรือ ns จริง), ตั้ง DNS client รายเครื่อง (Linux/macOS/Windows/compose/ปิด DoH), ใช้งานประจำวัน, troubleshooting (เครื่องมือ + ตารางอาการ), backup/restore, อัปเดต; ทดสอบจริงบน stack: คำสั่ง backup ใน RUNBOOK ได้ไฟล์ที่มี 4 โดเมน และ restore หลังลบโดเมน → registrar reconcile `fixed: [shop-demo.com]` delegation กลับมา; เพิ่ม Unverified U-005 (`dig +trace` จาก LAN ถึง root ภายใน Docker ไม่ได้)
 - [x] P8-T03 ปรับ log JSON + health + `make smoke` — หลักฐาน: log JSON: `src/plot/api/logging.py` (`JsonFormatter`, `configure_json_logging`, contextvar request_id) + access log ใน middleware; ตรวจใน container จริง: ทุกบรรทัดเป็น JSON (non-JSON = 0), `request_id` ตรงกับ header รวมค่าที่ client ส่ง (`smoke-req-1`), พบ API key ใน log 0 ครั้ง, `uvicorn.access` 0 บรรทัด; health: ใช้ของ P3-T09 (รูปแบบ §8.2 ไม่เปลี่ยน); `make smoke` = `python -m plot.smoke ENV_FILE` (health, API key, NXDOMAIN, passthrough, registry view, seed) → บน stack จริง `6/6 checks passed`, ตอน stop pdns-root → `3/6` พร้อมเหตุผล; tests `tests/api/test_logging.py`, `tests/unit/test_smoke.py`; Assumption A-031; `make lint` ผ่าน; `make test` → 561 passed; `make test-integration` → 26 passed
-- [ ] P8-T04 ผู้ใช้รัน Acceptance checklist §18
-- [ ] P8-T05 เคลียร์รายการ Unverified ให้หมด แล้ว tag `v1.0.0` (ตามที่ผู้ใช้สั่ง)
-- **Exit Gate P8:** [ ] ผ่านครบตาม SPEC §16 P8 · [ ] ผู้ใช้อนุมัติ
+- [ ] P8-T04 ผู้ใช้รัน Acceptance checklist §18 — **รอผู้ใช้** (ต้องทำบน 192.168.1.175 จากเครื่อง dev จริง)
+  - ผลตรวจล่วงหน้าโดย AI ใน container ของตัวเอง (BIND_ADDR=127.0.0.1; **ไม่ใช่ผล acceptance**):
+    1. ชื่อไม่เคยจด → NXDOMAIN: ok (dnspython ผ่าน resolver)
+    2. `github.com` → `140.82.114.4`: ok
+    3. จด + ตั้ง NS → resolver เห็นหลัง delay: ok (`test_register_then_delegation_visible_through_resolver`, `test_propagation_delay_holds_back_dns`)
+    4. child NS + glue 192.168.x.x → resolve ผ่าน glue ได้: ok (`test_child_nameservers_with_192_168_glue_resolve`); ส่วน `dig +trace` จาก LAN → U-005 ยังไม่ได้ตรวจ
+    5. เปลี่ยน NS แล้วเห็นค่าใหม่หลัง delay/flush: ok (`test_resolver_flush_controls_visibility`, S13)
+    6. `plot scenario run --all` → 16/16: ok
+    7. `plot verify` ครบทุก enum ในสถานการณ์: VERIFIED (S01), NOT_DELEGATED (S03), MISMATCH (S04), PARTIAL (S05), LAME (S08), NXDOMAIN (S12) จาก scenario จริง; ERROR ทดสอบแบบ unit เท่านั้น
+    8. ระบบ hosting จริงชี้มาที่ sandbox: NOT RUN (ต้องใช้ระบบของผู้ใช้)
+    9. `plot admin reset --all` แล้วเริ่มรอบใหม่ (S01 ผ่าน) ภายใน **3.5 วิ**: ok
+    10. restart ทั้ง compose แล้วข้อมูล+DNS กลับมา: ok (`test_reconcile_after_restart`; restore จาก backup ใน P8-T02)
+- [ ] P8-T05 เคลียร์รายการ Unverified ให้หมด แล้ว tag `v1.0.0` (ตามที่ผู้ใช้สั่ง) — **รอผู้ใช้**: เหลือ U-005 และผล integration บน dev box (§2.9); tag เมื่อผู้ใช้สั่งเท่านั้น
+- **Exit Gate P8:** [ ] ผ่านครบตาม SPEC §16 P8 · [ ] ผู้ใช้อนุมัติ — **หยุดรอผู้ใช้**
+  - [ ] Acceptance checklist §18 ผ่านทุกข้อโดยผู้ใช้ — รอ (ดูผลตรวจล่วงหน้าใน P8-T04)
+  - [ ] RUNBOOK ทดลองทำตามตั้งแต่เครื่องเปล่าได้จริง (ผู้ใช้ยืนยัน) — รอ
+  - [ ] ไม่มีรายการ "Unverified" ค้างใน PROGRESS — เหลือ U-005
 
 ---
 
@@ -240,3 +254,4 @@ _ยังไม่มี_
 | 2026-10-23 | P4-T01..T06 | CLI `plot` ครบตาม §9 (domain, ns, host, override, admin, seed) ผ่าน API client + `--json` + exit code 0/1/2; Assumptions A-023, A-024 | `make test` → 432 passed |
 | 2026-10-23 | P5-T01..T09 | verifier (7 สถานะ), `plot verify`, scenario engine + S01–S16, `plot demo-ns add-zone`, `plot scenario`; พบ SPEC ขัดกัน S03/S12 → A-025 (รอผู้ใช้ทบทวน); Assumptions A-025..A-029 | `make test` → 514 passed; `make test-integration` → 26 passed; `plot scenario run --all` → 16/16 |
 | 2026-10-23 | P6-T01..T06 | Web UI `/ui` (Jinja2 + HTMX 2.0.11 แบบ vendored): login ด้วย API key, domains, รายละเอียด + countdown, hosts, settings, scenarios, history; screenshot 7 หน้าจาก stack จริง; Assumption A-030 | `make test` → 552 passed |
+| 2026-10-23 | P7, P8-T01..T03 | P7 ไม่มีโมดูลที่เลือก (ค่าเริ่มต้น); README ฉบับเต็ม, RUNBOOK (ทดสอบ backup/restore จริง), log JSON + `make smoke`; ตรวจ §18 ล่วงหน้าใน container ของ AI; หยุดรอผู้ใช้ที่ P8-T04/T05 | `make test` → 561 passed; `make test-integration` → 26 passed; `make smoke` → 6/6 |
