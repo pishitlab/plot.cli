@@ -25,3 +25,7 @@ def test_placeholders_are_declared(sid: str) -> None:
         scenario.model_dump(by_alias=True, exclude_none=True), {**DEFAULT_VARIABLES, **names}
     )
     assert "${" not in str(expanded)
+
+
+def test_catalog_is_complete() -> None:
+    assert sorted(CATALOG) == [f"S{n:02d}" for n in range(1, 17)]

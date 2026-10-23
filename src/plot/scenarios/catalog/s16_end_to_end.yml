@@ -1,0 +1,17 @@
+id: S16
+name: end-to-end site
+description: >
+  The provider serves the customer's zone (as `plot demo-ns add-zone <domain> --a IP` does)
+  and clients of the sandbox resolver reach www.<domain>.
+domains: [a]
+steps:
+  - title: demo-ns add-zone with an A record
+    provider_zone: {domain: "${a}", records: {"@": 10.0.16.1, www: 10.0.16.1}}
+  - api:
+      method: POST
+      path: /domains
+      body: {name: "${a}", owner: scenario, nameservers: [ns1.myhost.net, ns2.myhost.net]}
+    expect: {status: 201}
+  - title: dig @resolver www.<domain>
+    dns: {server: resolver, name: "www.${a}", type: A, answers: [10.0.16.1], within: 30}
+  - verify: {domain: "${a}", expect: [ns1.myhost.net, ns2.myhost.net], status: VERIFIED}
