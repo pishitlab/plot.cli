@@ -118,7 +118,7 @@ autonomy: continuous
 
 ## P6 — Web UI (SPEC §12.1)
 - [x] P6-T01 layout + หน้ารายการโดเมน — หลักฐาน: `src/plot/web/app.py` (sub-app `/ui`: login/logout cookie, `act()` = เรียก `ApiClient` ใน threadpool แล้ว redirect, จัดการ `ApiError`/UNAUTHORIZED), `web/views.py`, templates `base.html` (nav + flash + htmx + `hx-boost`), `login.html`, `error.html`, `domains.html` (filter + ฟอร์มจด + ตาราง DB vs สถานะ DNS), `static/style.css`, `static/htmx.min.js`; mount ใน `api/main.py`; `tests/web/test_domains_page.py` (8); Assumption A-030; `make lint` ผ่าน; `make test` → 522 passed
-- [ ] P6-T02 หน้ารายละเอียดโดเมน (DB vs dns_visible, pending countdown, actions)
+- [x] P6-T02 หน้ารายละเอียดโดเมน (DB vs dns_visible, pending countdown, actions) — หลักฐาน: `/ui/domains/{name}` (ข้อมูลจด + `_dns_panel.html`: NS ใน DB vs `dns_visible`, published ago, pending นับถอยหลังเป็นวินาที โดย HTMX ดึง fragment `/ui/domains/{name}/dns` ทุก 1 วิ เฉพาะตอนมี pending) + ปุ่ม hold/release, renew, expire-now, override (ว่าง=คงเดิม, `none`=ล้าง), แทนที่ NS, delete — ทุกปุ่มเรียก API ผ่าน `ApiClient`; `views.dns_panel/override_body`; `tests/web/test_domain_page.py` (6); `make lint` ผ่าน; `make test` → 528 passed
 - [ ] P6-T03 หน้า hosts
 - [ ] P6-T04 หน้า settings
 - [ ] P6-T05 หน้า scenarios

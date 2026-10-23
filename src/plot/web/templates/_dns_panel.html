@@ -1,0 +1,13 @@
+<section id="dns-panel" class="card"
+  {% if not dns.in_sync %}hx-get="{{ root }}domains/{{ d.name }}/dns" hx-trigger="every 1s" hx-swap="outerHTML"{% endif %}>
+  <h2>DNS vs registry</h2>
+  <dl class="kv">
+    <dt>Nameservers in DB</dt><dd>{{ dns.in_db | join(", ") or "-" }}</dd>
+    <dt>Visible in DNS</dt><dd>{{ dns.visible | join(", ") or "no delegation" }}</dd>
+    <dt>Published</dt><dd>{{ dns.published_at | ago }}</dd>
+    <dt>Pending</dt>
+    <dd>
+      {% for s in dns.pending_seconds %}<span class="tag warn">applies in {{ s }}s</span> {% else %}<span class="tag ok">in sync</span>{% endfor %}
+    </dd>
+  </dl>
+</section>

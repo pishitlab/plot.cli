@@ -166,6 +166,85 @@ def create_web_app(client_for_key: ClientFactory) -> FastAPI:
             on_error="",
         )
 
+    @web.get("/domains/{name}", response_class=HTMLResponse, name="domain")
+    async def domain(request: Request, name: str) -> Response:
+        data = await fetch(request, lambda api: api.get(f"/domains/{name}"))
+        return page(request, "domain.html", d=data, dns=views.dns_panel(data))
+
+    @web.get("/domains/{name}/dns", response_class=HTMLResponse)
+    async def domain_dns(request: Request, name: str) -> Response:
+        """Fragment polled by HTMX while a change is pending."""
+        data = await fetch(request, lambda api: api.get(f"/domains/{name}"))
+        return page(request, "_dns_panel.html", d=data, dns=views.dns_panel(data))
+
+    @web.post("/domains/{name}/hold")
+    async def hold(request: Request, name: str) -> Response:
+        return await act(
+            request,
+            lambda api: api.put(f"/domains/{name}/status", {"add": ["serverHold"]}),
+            then=f"domains/{name}",
+            notice="serverHold set",
+        )
+
+    @web.post("/domains/{name}/release")
+    async def release(request: Request, name: str) -> Response:
+        return await act(
+            request,
+            lambda api: api.put(f"/domains/{name}/status", {"remove": ["serverHold"]}),
+            then=f"domains/{name}",
+            notice="serverHold removed",
+        )
+
+    @web.post("/domains/{name}/renew")
+    async def renew(request: Request, name: str) -> Response:
+        years = views.as_int(first(await form(request), "years", "1"))
+        return await act(
+            request,
+            lambda api: api.post(f"/domains/{name}/renew", {"years": years}),
+            then=f"domains/{name}",
+            notice=f"renewed for {years} year(s)",
+        )
+
+    @web.post("/domains/{name}/expire-now")
+    async def expire_now(request: Request, name: str) -> Response:
+        return await act(
+            request,
+            lambda api: api.post(f"/admin/domains/{name}/expire-now"),
+            then=f"domains/{name}",
+            notice="expiry moved into the past",
+        )
+
+    @web.post("/domains/{name}/overrides")
+    async def overrides(request: Request, name: str) -> Response:
+        data = await form(request)
+        body = views.override_body(first(data, "delay"), first(data, "ttl"))
+        return await act(
+            request,
+            lambda api: api.put(f"/domains/{name}/overrides", body),
+            then=f"domains/{name}",
+            notice="overrides saved",
+        )
+
+    @web.post("/domains/{name}/nameservers")
+    async def nameservers(request: Request, name: str) -> Response:
+        names = lines(await form(request), "nameservers")
+        return await act(
+            request,
+            lambda api: api.put(f"/domains/{name}/nameservers", {"nameservers": names}),
+            then=f"domains/{name}",
+            notice="nameservers replaced",
+        )
+
+    @web.post("/domains/{name}/delete")
+    async def delete(request: Request, name: str) -> Response:
+        return await act(
+            request,
+            lambda api: api.delete(f"/domains/{name}"),
+            then="",
+            notice=f"deleted {name}",
+            on_error=f"domains/{name}",
+        )
+
     return web
 
 

@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}{{ d.name }}{% endblock %}
+{% block content %}
+<h1>{{ d.name }}</h1>
+<section class="cols">
+  <div class="card">
+    <h2>Registration</h2>
+    <dl class="kv">
+      <dt>Owner</dt><dd>{{ d.owner }}</dd>
+      <dt>Status</dt><dd>{% for s in d.status %}<span class="tag bad">{{ s }}</span> {% else %}-{% endfor %}{% if d.expired %} <span class="tag warn">expired</span>{% endif %}</dd>
+      <dt>Created</dt><dd>{{ d.created_at[:19] | replace("T", " ") }} UTC</dd>
+      <dt>Expires</dt><dd>{{ d.expires_at[:19] | replace("T", " ") }} UTC</dd>
+      <dt>Overrides</dt><dd>delay={{ d.overrides.propagation_delay if d.overrides.propagation_delay is not none else "none" }} ttl={{ d.overrides.ns_ttl if d.overrides.ns_ttl is not none else "none" }}</dd>
+    </dl>
+    <p><a href="{{ root }}history?domain={{ d.name }}">History</a></p>
+  </div>
+  {% include "_dns_panel.html" %}
+</section>
+<section class="cols">
+  <form method="post" action="{{ root }}domains/{{ d.name }}/nameservers" class="card">
+    <h2>Nameservers</h2>
+    <label>One per line (empty removes the delegation)
+      <textarea name="nameservers" rows="3">{{ d.nameservers | join("\n") }}</textarea></label>
+    <button>Replace</button>
+  </form>
+  <form method="post" action="{{ root }}domains/{{ d.name }}/overrides" class="card">
+    <h2>Overrides</h2>
+    <label>Propagation delay (s, or "none") <input name="delay" placeholder="unchanged"></label>
+    <label>NS TTL (s, or "none") <input name="ttl" placeholder="unchanged"></label>
+    <button>Save</button>
+  </form>
+  <div class="card">
+    <h2>Actions</h2>
+    <div class="actions">
+      {% if "serverHold" in d.status %}
+      <form method="post" action="{{ root }}domains/{{ d.name }}/release"><button class="secondary">Release hold</button></form>
+      {% else %}
+      <form method="post" action="{{ root }}domains/{{ d.name }}/hold"><button class="secondary">Hold</button></form>
+      {% endif %}
+      <form method="post" action="{{ root }}domains/{{ d.name }}/renew">
+        <label>Years <input name="years" type="number" min="1" max="10" value="1"></label>
+        <button class="secondary">Renew</button>
+      </form>
+      <form method="post" action="{{ root }}domains/{{ d.name }}/expire-now"><button class="secondary">Expire now</button></form>
+      <form method="post" action="{{ root }}domains/{{ d.name }}/delete" hx-confirm="Delete {{ d.name }}?"><button class="danger">Delete</button></form>
+    </div>
+  </div>
+</section>
+{% endblock %}
