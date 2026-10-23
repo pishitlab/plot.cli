@@ -54,4 +54,7 @@ def test_main_reads_env_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) ->
 
     monkeypatch.setattr(smoke, "checks", fake_checks)
     assert smoke.main(["smoke", str(env)]) == 0
-    assert seen == [("127.0.0.9", "k")]
+    monkeypatch.setenv("BIND_ADDR", "10.0.0.5")
+    monkeypatch.setenv("API_KEY", "from-env")
+    assert smoke.main(["smoke"]) == 0
+    assert seen == [("127.0.0.9", "k"), ("10.0.0.5", "from-env")]

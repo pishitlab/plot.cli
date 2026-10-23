@@ -1,8 +1,10 @@
 """Quick check of a running stack from the outside (``make smoke``).
 
-Usage: ``python -m plot.smoke [ENV_FILE]`` — reads BIND_ADDR and API_KEY from the env file.
+Usage: ``python -m plot.smoke [ENV_FILE]`` — BIND_ADDR and API_KEY come from the env file,
+or from the environment when no file is given (``scripts/smoke.sh`` runs it that way).
 """
 
+import os
 import secrets
 import sys
 from collections.abc import Callable
@@ -107,7 +109,7 @@ def run(selected: list[Check]) -> int:
 
 
 def main(argv: list[str]) -> int:
-    env = read_env(Path(argv[1] if len(argv) > 1 else ".env"))
+    env = read_env(Path(argv[1])) if len(argv) > 1 else dict(os.environ)
     return run(checks(env["BIND_ADDR"], env["API_KEY"]))
 
 
