@@ -140,7 +140,7 @@ autonomy: continuous
 
 ## P8 — ปิดงาน (SPEC §15, §17, §18)
 - [x] P8-T01 `README.md` ฉบับเต็ม — หลักฐาน: `README.md` ฉบับเต็ม: วัตถุประสงค์ + คำเตือน dev LAN only (§15), ลิงก์ SPEC/RUNBOOK/PROGRESS, แผนผังส่วนประกอบ, ติดตั้งแบบสรุป, การใช้ CLI (env, exit code, คำสั่งที่ต้องรันใน container), Web UI, verifier, scenario, ตาราง config (รวม env ที่เพิ่มตาม A-020), การทดสอบ; `.env.example` เพิ่ม `LAME_IP` (optional); `make lint` ผ่าน (ไฟล์เอกสาร ไม่มีผลต่อ test)
-- [ ] P8-T02 `docs/RUNBOOK.md` (ติดตั้ง .175, DNS client, systemd-resolved, troubleshooting, backup)
+- [x] P8-T02 `docs/RUNBOOK.md` (ติดตั้ง .175, DNS client, systemd-resolved, troubleshooting, backup) — หลักฐาน: `docs/RUNBOOK.md`: เตรียมเครื่อง (Docker ตามเอกสารทางการ, ปิด `DNSStubListener` + แก้ `/etc/resolv.conf`, firewall เฉพาะ LAN), ติดตั้ง/เปิดระบบ, seed provider (demo-ns หรือ ns จริง), ตั้ง DNS client รายเครื่อง (Linux/macOS/Windows/compose/ปิด DoH), ใช้งานประจำวัน, troubleshooting (เครื่องมือ + ตารางอาการ), backup/restore, อัปเดต; ทดสอบจริงบน stack: คำสั่ง backup ใน RUNBOOK ได้ไฟล์ที่มี 4 โดเมน และ restore หลังลบโดเมน → registrar reconcile `fixed: [shop-demo.com]` delegation กลับมา; เพิ่ม Unverified U-005 (`dig +trace` จาก LAN ถึง root ภายใน Docker ไม่ได้)
 - [ ] P8-T03 ปรับ log JSON + health + `make smoke`
 - [ ] P8-T04 ผู้ใช้รัน Acceptance checklist §18
 - [ ] P8-T05 เคลียร์รายการ Unverified ให้หมด แล้ว tag `v1.0.0` (ตามที่ผู้ใช้สั่ง)
@@ -216,6 +216,7 @@ autonomy: continuous
 | U-002 | ~~ชื่อ option `soa-edit-api` ที่เหมาะกับ version ที่ pin~~ **ตรวจแล้ว 2026-10-23** | — | บน 4.9.17: zone ที่ตั้ง `soa_edit_api=INCEPTION-INCREMENT` → PATCH แล้ว serial ยัง 1→1; ตั้ง `INCREASE` → 1→2 จึงใช้ `INCREASE` ("หรือเทียบเท่า" ตาม §7.1) |
 | U-003 | ~~Unbound ยอมรับ referral ที่ข้ามระดับจาก root (D-005) และ `qname-minimisation: no` ตามที่คาด~~ **ตรวจแล้ว 2026-10-23 (ใน container ของ AI)** | — | `test_register_then_delegation_visible_through_resolver`, `test_child_nameservers_with_192_168_glue_resolve` ผ่าน: root ส่ง referral ตรงไปที่ `it-xxxx.com` แล้ว unbound 1.26.1 resolve ได้; `get_option qname-minimisation` = `no` |
 | U-004 | ~~glue ที่เป็น private IP ผ่านตัวกรองของ Unbound เมื่อไม่มี `private-address`~~ **ตรวจแล้ว 2026-10-23 (ใน container ของ AI)** | — | `test_child_nameservers_with_192_168_glue_resolve`: glue `192.168.250.31` บน network ทดสอบ `192.168.250.0/24` → registry view มี glue และ `www` resolve ผ่าน unbound ได้; `get_option private-address` = ว่าง |
+| U-005 | Acceptance §18 ข้อ "`dig +trace <domain>` เดินผ่าน glue ได้" จากเครื่อง dev: `+trace` ให้ dig ถาม root เองโดยตรง แต่ root จำลอง (`a.root-servers.net` = 172.28.0.10) เป็น IP ภายใน Docker ที่เครื่องใน LAN น่าจะเข้าไม่ถึง | ต้องรันบนเครื่อง dev จริงใน LAN เดียวกับ 192.168.1.175 (ใน container ของ AI ทดสอบเส้นทาง LAN ไม่ได้) | ผู้ใช้ลอง `dig +trace` จากเครื่อง dev; ถ้าไม่ผ่าน ใช้ทางแทนใน RUNBOOK §5 (registry view `-p 5300 +norec` + ถาม glue IP) หรือพิจารณา Spec Change ของข้อ acceptance นี้ |
 
 ## Spec Change Requests
 | ID | ปัญหา | หลักฐาน | ข้อเสนอ (แนะนำ) | ผลกระทบ | สถานะ |
