@@ -1,0 +1,25 @@
+id: S15
+name: host lifecycle
+description: Hosts in use as nameservers cannot be deleted, directly or through their domain.
+domains: [a, b]
+steps:
+  - api: {method: POST, path: /domains, body: {name: "${a}", owner: scenario}}
+    expect: {status: 201}
+  - api: {method: POST, path: /hosts, body: {name: "ns1.${a}", ipv4: [192.168.10.1]}}
+    expect: {status: 201}
+  - api:
+      method: POST
+      path: /domains
+      body: {name: "${b}", owner: scenario, nameservers: ["ns1.${a}", ns1.other.net]}
+    expect: {status: 201}
+  - api: {method: DELETE, path: "/hosts/ns1.${a}"}
+    expect: {status: 409, code: HOST_IN_USE}
+  - api: {method: DELETE, path: "/domains/${a}"}
+    expect: {status: 409, code: HOST_IN_USE}
+  - title: once the other domain lets go, both can go
+    api: {method: PUT, path: "/domains/${b}/nameservers", body: {nameservers: []}}
+    expect: {status: 200}
+  - api: {method: DELETE, path: "/domains/${a}"}
+    expect: {status: 204}
+  - api: {method: GET, path: "/hosts/ns1.${a}"}
+    expect: {status: 404, code: HOST_NOT_FOUND}

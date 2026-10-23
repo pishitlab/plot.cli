@@ -1,0 +1,40 @@
+id: S13
+name: TTL and resolver cache
+description: >
+  With flush_on_apply=false and TTL 300 the resolver keeps serving the old provider
+  after the NS change, until its cache is flushed.
+domains: [a]
+steps:
+  - api: {method: PUT, path: /admin/settings, body: {flush_on_apply: false}}
+    expect: {status: 200, json: {flush_on_apply: false}}
+  - api: {method: POST, path: /domains, body: {name: "${a}", owner: scenario}}
+    expect: {status: 201}
+  - api: {method: PUT, path: "/domains/${a}/overrides", body: {ns_ttl: 300}}
+    expect: {status: 200}
+  - title: provider A on demo-ns1 and provider B on demo-ns2 serve different addresses
+    provider_zone:
+      domain: "${a}"
+      on: [demo-ns1]
+      nameservers: ["nsa1.${a}", "nsa2.${a}"]
+      records: {www: 10.0.13.1, nsa1: "${demo_ns1_ip}", nsa2: "${demo_ns1_ip}"}
+  - provider_zone:
+      domain: "${a}"
+      on: [demo-ns2]
+      nameservers: ["nsb1.${a}", "nsb2.${a}"]
+      records: {www: 10.0.13.2, nsb1: "${demo_ns2_ip}", nsb2: "${demo_ns2_ip}"}
+  - api: {method: POST, path: /hosts, body: {name: "nsa1.${a}", ipv4: ["${demo_ns1_ip}"]}}
+  - api: {method: POST, path: /hosts, body: {name: "nsa2.${a}", ipv4: ["${demo_ns1_ip}"]}}
+  - api: {method: POST, path: /hosts, body: {name: "nsb1.${a}", ipv4: ["${demo_ns2_ip}"]}}
+  - api: {method: POST, path: /hosts, body: {name: "nsb2.${a}", ipv4: ["${demo_ns2_ip}"]}}
+  - api: {method: PUT, path: "/domains/${a}/nameservers", body: {nameservers: ["nsa1.${a}", "nsa2.${a}"]}}
+  - title: resolver caches provider A
+    dns: {server: resolver, name: "www.${a}", type: A, answers: [10.0.13.1], within: 30}
+  - api: {method: PUT, path: "/domains/${a}/nameservers", body: {nameservers: ["nsb1.${a}", "nsb2.${a}"]}}
+  - title: the registry already delegates to provider B
+    dns: {server: registry, name: "${a}", type: NS, answers: ["nsb1.${a}.", "nsb2.${a}."], within: 30}
+  - title: the resolver still answers from cache
+    dns: {server: resolver, name: "www.${a}", type: A, answers: [10.0.13.1]}
+  - api: {method: POST, path: /admin/resolver/flush, body: {domain: "${a}"}}
+    expect: {status: 200}
+  - title: after the flush the resolver follows the new delegation
+    dns: {server: resolver, name: "www.${a}", type: A, answers: [10.0.13.2]}

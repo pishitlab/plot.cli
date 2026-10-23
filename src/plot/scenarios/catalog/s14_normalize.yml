@@ -1,0 +1,14 @@
+id: S14
+name: normalization
+description: Upper case and trailing dots are accepted and stored in canonical form.
+domains: [a]
+steps:
+  - provider_zone: {domain: "${a}"}
+  - api:
+      method: POST
+      path: /domains
+      body: {name: "${a:upper}.", owner: scenario, nameservers: [NS1.MyHost.NET., NS2.myhost.net]}
+    expect: {status: 201, json: {name: "${a}", nameservers: [ns1.myhost.net, ns2.myhost.net]}}
+  - api: {method: GET, path: "/domains/${a:upper}."}
+    expect: {status: 200, json: {name: "${a}"}}
+  - verify: {domain: "${a:upper}.", expect: [NS1.MYHOST.NET., ns2.myhost.net], status: VERIFIED, within: 30}

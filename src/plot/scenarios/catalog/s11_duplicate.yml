@@ -1,0 +1,9 @@
+id: S11
+name: duplicate registration
+description: A taken name cannot be registered again, whoever asks.
+domains: [a]
+steps:
+  - api: {method: POST, path: /domains, body: {name: "${a}", owner: scenario}}
+    expect: {status: 201}
+  - api: {method: POST, path: /domains, body: {name: "${a}", owner: someone-else}}
+    expect: {status: 409, code: DOMAIN_EXISTS}
