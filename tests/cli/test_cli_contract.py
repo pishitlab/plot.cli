@@ -13,7 +13,7 @@ from plot.cli.main import app
 from tests.cli.conftest import Plot
 
 SPEC = Path(__file__).resolve().parents[2] / "docs" / "SPEC.md"
-P5_COMMANDS = {"scenario", "verify", "demo-ns"}
+P5_COMMANDS = {"scenario", "demo-ns"}  # verify is implemented (P5-T02)
 
 
 def spec_commands() -> set[tuple[str, ...]]:
@@ -91,7 +91,8 @@ def test_every_command_answers_in_json(plot: Plot) -> None:
         ["admin", "reset", "--all"],
     ]
     covered = {tuple(run[:2]) if tuple(run[:2]) in cli_commands() else (run[0],) for run in runs}
-    assert covered == set(cli_commands()) - {("seed", "provider")}  # seed: tests/unit/test_seed.py
+    # seed: tests/unit/test_seed.py; verify needs DNS: tests/cli/test_verify_cli.py
+    assert covered == set(cli_commands()) - {("seed", "provider"), ("verify",)}
     for run in runs:
         result = plot(*run, "--json")
         assert result.exit_code == 0, (run, result.output)
@@ -107,5 +108,5 @@ def test_groups_without_command_show_help(plot: Plot, args: list[str]) -> None:
 
 def test_root_help_lists_all_groups(plot: Plot) -> None:
     text = plot("--help").output
-    for name in ("domain", "ns", "host", "override", "admin", "seed"):
+    for name in ("domain", "ns", "host", "override", "admin", "seed", "verify"):
         assert name in text
