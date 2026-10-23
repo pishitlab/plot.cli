@@ -62,7 +62,11 @@ class LifecycleTick:
                 settings=load_settings(session, self.defaults),
                 request=RequestContext(actor=SYSTEM_ACTOR, request_id="lifecycle"),
             )
-            result = LifecycleService(ctx).run(since=self.last_run)
+            lifecycle = LifecycleService(ctx)
+            result = lifecycle.run(since=self.last_run)
+            pruned = lifecycle.prune()
+        if pruned:
+            log.info("pruned %d bookkeeping rows", pruned)
         if result.purged or result.expired:
             log.info("lifecycle: expired=%s purged=%s", result.expired, result.purged)
         self.last_run = now

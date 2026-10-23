@@ -4,7 +4,7 @@ import pytest
 
 from plot.core.clock import FakeClock
 from plot.core.errors import DomainNotFound, DomainPurged
-from plot.db.models import Event
+from plot.db.models import Event, PendingChange, PublishedState
 from plot.services.context import ServiceContext
 from plot.services.domains import DomainService
 from plot.services.hosts import HostService, find_host
@@ -149,3 +149,49 @@ def test_expire_now_moves_expiry_into_past(
     renewed = domains.renew("shop.com", 1)  # S10: renew within grace brings it back
     assert not renewed.expired
     assert ctx.session.query(Event).filter_by(action="domain.expire_now").count() == 1
+
+
+def test_prune_removes_only_finished_bookkeeping(
+    lifecycle: LifecycleService, ctx: ServiceContext, clock: FakeClock
+) -> None:
+    session = ctx.session
+    DomainService(ctx).register("held.com", owner="a")  # event at T0
+    applied = T0 - timedelta(hours=1)
+    session.add_all(
+        [
+            PendingChange(
+                domain_name="a.com",
+                snapshot=None,
+                scheduled_at=applied,
+                apply_at=applied,
+                applied_at=applied,
+            ),
+            PendingChange(
+                domain_name="c.com",
+                snapshot=None,
+                scheduled_at=T0,
+                apply_at=T0 + timedelta(days=200),
+            ),
+            PublishedState(domain_name="gone.com", snapshot=None, published_at=T0),
+            PublishedState(domain_name="c.com", snapshot=None, published_at=T0),  # change pending
+            PublishedState(domain_name="held.com", snapshot=None, published_at=T0),  # registered
+            PublishedState(
+                domain_name="live.com", snapshot={"nameservers": ["x"]}, published_at=T0
+            ),
+        ]
+    )
+    session.flush()
+    assert lifecycle.prune() == 1  # gone.com only: the applied change is younger than a day
+
+    clock.advance(timedelta(days=91))
+    ctx.record("domain.recent", domain_name="held.com")
+    session.flush()
+    # applied a.com change (> 1 day) + held.com register event (> 90 days)
+    assert lifecycle.prune() == 2
+    assert [c.domain_name for c in session.query(PendingChange)] == ["c.com"]
+    assert sorted(s.domain_name for s in session.query(PublishedState)) == [
+        "c.com",
+        "held.com",
+        "live.com",
+    ]
+    assert [e.action for e in session.query(Event)] == ["domain.recent"]

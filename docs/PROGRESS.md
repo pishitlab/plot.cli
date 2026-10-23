@@ -170,6 +170,7 @@ autonomy: continuous
 - [x] F5 Web UI ใช้ HTTP client ตัวเดียว (pool) แล้วส่ง key ราย request แทนการสร้าง client ใหม่ทุก request — หลักฐาน: `ApiClient(http, api_key)`, `test_per_request_key_lets_one_client_serve_many_keys`, web tests ใช้ client ร่วมเหมือน production
 - [x] F13 `DemoNs` ของ scenario สร้างครั้งเดียวต่อ process (`zones_from_env` cache) + **บั๊กที่เจอระหว่างแก้**: `engine_from_env(api)` ไม่ใช้ `api` ที่ส่งมา (UI รัน scenario ด้วย key จาก env แทน key ของผู้ login) — แก้แล้ว, `test_engine_uses_the_client_it_is_given`
 - [x] F9 จด domain/host ชื่อเดียวกันพร้อมกัน → ผู้แพ้ได้ 409 `DOMAIN_EXISTS`/`HOST_EXISTS` แทน 500 — หลักฐาน: `test_R_DOM_01_concurrent_registration_is_domain_exists`, `test_R_HOST_07_concurrent_creation_is_host_exists`
+- [x] F8 (ส่วนข้อมูล) lifecycle job ล้าง `pending_changes` ที่ apply แล้ว > 1 วัน, `events` > 90 วัน, `published_state` ว่างของโดเมนที่ไม่มีแล้วและไม่มี pending — หลักฐาน: `test_prune_removes_only_finished_bookkeeping`; (ส่วน log rotation อยู่ในงาน compose ถัดไป)
 
 ## Environment (กรอกใน P0-T02)
 ตรวจเมื่อ 2026-10-22 ใน cloud container ของ AI (ไม่ใช่ `192.168.1.175`)
